@@ -116,7 +116,7 @@ def export_as_csv(self, request, queryset):
 
 
 class UsersAdmin(admin.ModelAdmin):
-    list_display = ("User_ID", "First_Name", "Last_Name", "Checked_In", "display_total_hours")
+    list_display = ("User_ID", "First_Name", "Last_Name", "Is_Active", "Checked_In", "display_total_hours")
     readonly_fields = ["Checked_In", "Last_In", "Last_Out"]
     data_hierarchy = "Last_Name"
     actions = [check_out, check_in, export_as_csv, create_staff_user_action]
