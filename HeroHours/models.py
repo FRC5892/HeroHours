@@ -9,7 +9,7 @@ class Users(models.Model):
     Total_Hours = models.TimeField()
     Checked_In = models.BooleanField(default=False)
     Total_Seconds = models.FloatField(default=0)
-    Last_In = models.DateTimeField(null=True)
+    Last_In = models.DateTimeField(null=True, auto_now_add=True)
     Last_Out = models.DateTimeField(null=True)
     Is_Active = models.BooleanField(default=True)
 
