@@ -139,8 +139,9 @@ def handle_bulk_updates(user_id):
 
 def check_in_or_out(user, right_now, log, count):
     start_time = time.time()
+    count2=count
     if user.Checked_In:
-        count -= 1
+        count2 -= 1
         state = False
         log.operation = 'Check Out'
         user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (right_now - user.Last_In),
@@ -148,7 +149,7 @@ def check_in_or_out(user, right_now, log, count):
         user.Total_Seconds = F('Total_Seconds') + round((right_now - user.Last_In).total_seconds())
         user.Last_Out = right_now
     else:
-        count += 1
+        count2 += 1
         state = True
         log.operation = 'Check In'
         user.Last_In = right_now
@@ -161,6 +162,7 @@ def check_in_or_out(user, right_now, log, count):
         state = None
         log.status = "Inactive User"
     else:
+        count = count2
         user.save()
 
     # Save log and user updates
