@@ -6,7 +6,7 @@ class Users(models.Model):
     User_ID = models.IntegerField(primary_key=True)
     First_Name = models.CharField(max_length=50)
     Last_Name = models.CharField(max_length=50)
-    Total_Hours = models.TimeField()
+    Total_Hours = models.DurationField()
     Checked_In = models.BooleanField(default=False)
     Total_Seconds = models.FloatField(default=0)
     Last_In = models.DateTimeField(null=True, auto_now_add=True)
