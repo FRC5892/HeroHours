@@ -2,6 +2,8 @@ import json
 import time
 import requests
 import os
+
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import F, DurationField, ExpressionWrapper
 from django.shortcuts import render, redirect
@@ -97,6 +99,10 @@ def handle_special_commands(user_id):
         elapsed_time = time.time() - start_time
         print(f"input(admin) execution time: {elapsed_time:.4f} seconds")
         return redirect('/admin/')
+    if user_id == "logout":
+        elapsed_time = time.time() - start_time
+        print(f"input(logout) execution time: {elapsed_time:.4f} seconds")
+        return redirect('logout')
 
 
 def handle_bulk_updates(user_id):
@@ -139,7 +145,7 @@ def handle_bulk_updates(user_id):
 
 def check_in_or_out(user, right_now, log, count):
     start_time = time.time()
-    count2=count
+    count2 = count
     if user.Checked_In:
         count2 -= 1
         state = False
@@ -205,3 +211,8 @@ def send_data_to_google_sheet(request):
         print("failed")
         print(e)
         return JsonResponse({'status': 'error', 'message': str(e), 'count': count})
+
+
+def logout_view(request):
+    logout(request)
+    return redirect('login')

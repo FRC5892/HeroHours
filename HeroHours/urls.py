@@ -12,4 +12,5 @@ urlpatterns = [
     path('login/', LoginView.as_view(template_name='login.html'), name='login'),
     path('__debug__/', include(debug_toolbar.urls)),
     path('custom/', add_user,name='custom'),
+    path('logout/', views.logout_view, name='logout'),
 ]
