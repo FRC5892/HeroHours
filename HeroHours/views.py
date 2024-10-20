@@ -1,16 +1,20 @@
+import base64
 import json
 import time
 import requests
 import os
+
+from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import F, DurationField, ExpressionWrapper
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.core import serializers
+from django.utils.http import urlsafe_base64_decode
 from dotenv import load_dotenv, find_dotenv
 
 from . import models
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.forms.models import model_to_dict
 
 load_dotenv(find_dotenv())
@@ -205,3 +209,20 @@ def send_data_to_google_sheet(request):
         print("failed")
         print(e)
         return JsonResponse({'status': 'error', 'message': str(e), 'count': count})
+def sheet_pull(request):
+    print("Authorization" not in request.headers.keys())
+    if "Authorization" not in request.headers.keys():
+        response = HttpResponse('Unauthorized', status=401)
+        response["WWW-Authenticate"] = "Basic"
+        return response
+    auth_header = request.headers.get("Authorization").split(" ")
+    if auth_header[0]!="Basic":
+        return HttpResponse('Unauthorized', status=401)
+    username, password = base64.b64decode(auth_header[1]).decode('ascii').split(":")
+    user = authenticate(request, username=username, password=password)
+
+    members = models.Users.objects.all()
+    response = 'User_ID,First_Name,Last_Name,Total_Hours,Total_Seconds,Last_In,Last_Out,Is_Active,\n'
+    for member in members:
+        response += f"{member.User_ID},{member.First_Name},{member.Last_Name},{member.get_total_hours()},{member.Total_Seconds},{member.Last_In},{member.Last_Out},{member.Is_Active}\n"
+    return HttpResponse(response,content_type='text/csv')
