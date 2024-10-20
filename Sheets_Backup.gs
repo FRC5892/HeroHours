@@ -81,3 +81,26 @@ function onOpen() {
       .addItem("Add Meeting For Attendance","addMeeting")
       .addToUi();
 }
+function parseCsvResponse(csvString) {
+    var retArray = [];
+    var strLines = csvString.split('\n');
+    var strLineLen = strLines.length;
+    for (var i = 0; i < strLineLen; i++) {
+        var line = strLines[i];
+      console.log(line);
+        if (line != '') {
+            retArray.push(line.split(","));
+        }
+    }return retArray;
+}
+function populateSheetWithCSV(csvUrl, user, pw) {// request the CSV!
+    var resp = UrlFetchApp.fetch(csvUrl, {
+        headers: {
+            // use basic auth
+            'Authorization': 'Basic ' + Utilities.base64Encode(
+                    user + ':' + pw, Utilities.Charset.UTF_8)
+        }
+    });// parse the response as a CSV
+    var csvContent = parseCsvResponse(resp.getContentText());// clear everything in the sheet
+    return csvContent;
+}
