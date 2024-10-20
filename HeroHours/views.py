@@ -220,7 +220,9 @@ def sheet_pull(request):
     username, password = base64.b64decode(auth_header[1]).decode('ascii').split(":")
     user = authenticate(request, username=username, password=password)
     if not user:
-        return HttpResponse('Unauthorized', status=401)
+        response = HttpResponse('Unauthorized', status=401)
+        response["WWW-Authenticate"] = "Basic"
+        return response
     members = models.Users.objects.all()
     response = 'User_ID,First_Name,Last_Name,Total_Hours,Total_Seconds,Last_In,Last_Out,Is_Active,\n'
     for member in members:
