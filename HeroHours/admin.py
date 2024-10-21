@@ -7,6 +7,7 @@ import django.contrib.auth.models as authModels
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.auth.decorators import user_passes_test
+from django.db.models import ExpressionWrapper, F, DurationField
 from django.forms import model_to_dict
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
@@ -33,8 +34,8 @@ def check_out(modeladmin, request, queryset):
             status='Success',  # Initial status
         )
         user.Checked_In = False
-        user.Total_Hours = (
-                datetime.combine(datetime.today(), user.Total_Hours) + (timezone.now() - user.Last_In)).time()
+        user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (timezone.now() - user.Last_In),
+                                             output_field=DurationField())
         #print((timezone.now() - user.Last_In).total_seconds())
         user.Total_Seconds += round((timezone.now() - user.Last_In).total_seconds())
         user.Last_Out = timezone.now()
