@@ -21,20 +21,20 @@ let username = document.getElementsByName("username")[0];
             this.submit();
           }
         });
-    function updateTime() {
-        const timeDiv = document.querySelector(".time");
-        const now = new Date();
-        const prehours = now.getHours() % 12;
-        const hours = prehours.toString().padStart(2, "0");
-        const minutes = now.getMinutes().toString().padStart(2, "0");
-        const seconds = now.getSeconds().toString().padStart(2, "0");
-        let half = now.getHours() >= 12 ? "PM" : "AM";
+function updateTime() {
+  const timeDiv = document.querySelector(".time");
+  const now = new Date();
+  const prehours = now.getHours() == 12? 12 : now.getHours() % 12;
+  const hours = prehours.toString().padStart(2, "0");
+  const minutes = now.getMinutes().toString().padStart(2, "0");
+  const seconds = now.getSeconds().toString().padStart(2, "0");
+  let half = now.getHours() >= 12 ? "PM" : "AM";
 
-        timeDiv.textContent = `${
-            now.getMonth() + 1
-        }/${now.getDate()}/${now.getFullYear()} 
-        ${hours}:${minutes}:${seconds} ${half}`;
-    }
+  timeDiv.textContent = `${
+    now.getMonth() + 1
+  }/${now.getDate()}/${now.getFullYear()} 
+   ${hours}:${minutes}:${seconds} ${half}`;
+}
 
     // Update time every second
     setInterval(updateTime, 1000);
