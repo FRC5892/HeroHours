@@ -30,7 +30,7 @@ def index(request):
 
     # Pass the users data to the template
     return render(request, 'members.html',
-                  {'usersData': usersData, "checked_in": users_checked_in, 'local_log_entries': local_log_entries})
+                  {'usersData': usersData, "checked_in": users_checked_in, 'local_log_entries': local_log_entries, 'gtag': os.environ['GTAG']})
 
 
 @permission_required("HeroHours.change_users", raise_exception=True)
