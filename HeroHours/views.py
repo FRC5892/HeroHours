@@ -25,11 +25,12 @@ def index(request):
     usersData = models.Users.objects.filter(Is_Active=True)
     users_checked_in = models.Users.objects.filter(Checked_In=True).count()
     local_log_entries = models.ActivityLog.objects.all()[:9]  #limits to loading only 9 entries
-    print(timezone.now())
-
     # Pass the users data to the template
     return render(request, 'members.html',
-                  {'usersData': usersData, "checked_in": users_checked_in, 'local_log_entries': local_log_entries})
+                  {'usersData': usersData,
+                   "checked_in": users_checked_in,
+                   'local_log_entries': local_log_entries,
+                   'gtag': os.environ['GTAG']})
 
 
 @permission_required("HeroHours.change_users", raise_exception=True)
