@@ -25,12 +25,13 @@ def index(request):
     usersData = models.Users.objects.filter(Is_Active=True)
     users_checked_in = models.Users.objects.filter(Checked_In=True).count()
     local_log_entries = models.ActivityLog.objects.all()[:9]  #limits to loading only 9 entries
-    #print(local_log_entries)
-    print(timezone.now())
 
     # Pass the users data to the template
     return render(request, 'members.html',
-                  {'usersData': usersData, "checked_in": users_checked_in, 'local_log_entries': local_log_entries, 'gtag': os.environ['GTAG']})
+                  {'usersData': usersData,
+                   "checked_in": users_checked_in,
+                   'local_log_entries': local_log_entries,
+                   'gtag': os.environ['GTAG']})
 
 
 @permission_required("HeroHours.change_users", raise_exception=True)
@@ -74,9 +75,6 @@ def handle_entry(request):
     elapsed_time = time.time() - start_time
     print(f"input(before) execution time: {elapsed_time:.4f} seconds")
     operation_result = check_in_or_out(user, right_now, log, count)
-    #print(operation_result)
-    #print(user.get_total_hours())
-    #print(timezone.now())
     #profiler.disable()
     #stats = pstats.Stats(profiler)
     #stats.strip_dirs()
@@ -146,7 +144,6 @@ def handle_bulk_updates(user_id):
 
 
 def check_in_or_out(user, right_now, log, count):
-    #print(user)
     start_time = time.time()
     count2 = count
     logged_time = "None"
@@ -159,7 +156,6 @@ def check_in_or_out(user, right_now, log, count):
         user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (right_now - user.Last_In),
                                              output_field=DurationField())
         user.Total_Seconds = F('Total_Seconds') + round((right_now - user.Last_In).total_seconds())
-        #print(round((right_now - user.Last_In).total_seconds()))
         change = round((right_now - user.Last_In).total_seconds())
         user.Last_Out = right_now
     else:
@@ -196,7 +192,6 @@ def check_in_or_out(user, right_now, log, count):
 def get_time(orig: float, change: int) -> str:
     if change == "None":
         return "None"
-    #print(change)
     total_time: int = int(orig)+change
     hours, remainder = divmod(int(total_time), 3600)
     minutes, seconds = divmod(remainder, 60)
