@@ -127,6 +127,9 @@ async function handleFormSubmission(event) {
           ? "member checkedIn"
           : "member ";
       }
+      if (body.newtime !="None"){
+        document.getElementById(`hours-${body.newlog.userID}`).innerHTML = body.newtime;
+      }
       // add it to the log
       addRow(body.newlog);
       // update check in count

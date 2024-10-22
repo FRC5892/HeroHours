@@ -1,4 +1,5 @@
 from django.db import models
+from django.forms import model_to_dict
 
 
 # Create your models here.
@@ -14,7 +15,6 @@ class Users(models.Model):
     Is_Active = models.BooleanField(default=True)
 
     def get_total_hours(self):
-        #print(f"Total Seconds: {self.Total_Seconds}")
         hours, remainder = divmod(int(self.Total_Seconds), 3600)
         minutes, seconds = divmod(remainder, 60)
         return f"{hours}h {minutes}m {seconds}s"

@@ -25,12 +25,12 @@ def index(request):
     usersData = models.Users.objects.filter(Is_Active=True)
     users_checked_in = models.Users.objects.filter(Checked_In=True).count()
     local_log_entries = models.ActivityLog.objects.all()[:9]  #limits to loading only 9 entries
-    #print(local_log_entries)
-    print(timezone.now())
-
     # Pass the users data to the template
     return render(request, 'members.html',
-                  {'usersData': usersData, "checked_in": users_checked_in, 'local_log_entries': local_log_entries})
+                  {'usersData': usersData,
+                   "checked_in": users_checked_in,
+                   'local_log_entries': local_log_entries,
+                   'gtag': os.environ['GTAG']})
 
 
 @permission_required("HeroHours.change_users", raise_exception=True)
@@ -74,7 +74,6 @@ def handle_entry(request):
     elapsed_time = time.time() - start_time
     print(f"input(before) execution time: {elapsed_time:.4f} seconds")
     operation_result = check_in_or_out(user, right_now, log, count)
-    print(timezone.now())
     #profiler.disable()
     #stats = pstats.Stats(profiler)
     #stats.strip_dirs()
@@ -146,6 +145,9 @@ def handle_bulk_updates(user_id):
 def check_in_or_out(user, right_now, log, count):
     start_time = time.time()
     count2 = count
+    logged_time = "None"
+    change = "None"
+    orig = user.Total_Seconds
     if user.Checked_In:
         count2 -= 1
         state = False
@@ -153,6 +155,7 @@ def check_in_or_out(user, right_now, log, count):
         user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (right_now - user.Last_In),
                                              output_field=DurationField())
         user.Total_Seconds = F('Total_Seconds') + round((right_now - user.Last_In).total_seconds())
+        change = round((right_now - user.Last_In).total_seconds())
         user.Last_Out = right_now
     else:
         count2 += 1
@@ -170,6 +173,7 @@ def check_in_or_out(user, right_now, log, count):
     else:
         count = count2
         user.save()
+        logged_time = get_time(orig, change)
 
     # Save log and user updates
     log.save()
@@ -180,7 +184,17 @@ def check_in_or_out(user, right_now, log, count):
         'state': state,
         'newlog': model_to_dict(log),
         'count': count,
+        'newtime': logged_time,
     }
+
+
+def get_time(orig: float, change: int) -> str:
+    if change == "None":
+        return "None"
+    total_time: int = int(orig)+change
+    hours, remainder = divmod(int(total_time), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours}h {minutes}m {seconds}s"
 
 
 APP_SCRIPT_URL = os.environ['APP_SCRIPT_URL']
