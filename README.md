@@ -16,6 +16,7 @@ This is a python/django rewrite of the original vue js/google sheets program.
 Contributors Welcome!
 (policy coming soon)
 # License  
-GPL v3
-
+MIT
+# Installation
+Our version is deployed to Heroku 
 
