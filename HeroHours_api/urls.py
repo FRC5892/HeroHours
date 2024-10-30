@@ -1,10 +1,11 @@
-from django.urls import path
+from django.urls import path, re_path
 
 from HeroHours_api import views
 from .views import (
-    TodoListApiView,
+    SheetPullAPI,
+    MeetingPullAPI
 )
 urlpatterns = [
-    path('', TodoListApiView.as_view(), name='index'),
-
+    re_path(r'sheet/(users|activity)/', SheetPullAPI.as_view(), name='sheet'),
+    path('sheet/<int:year>/<int:month>/<int:day>/', MeetingPullAPI.as_view(),name='sheet meeting')
 ]
