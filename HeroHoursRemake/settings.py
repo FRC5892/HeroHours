@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'debug_toolbar',
     'sslserver',
     'rest_framework',
+    'rest_framework.authtoken',
 ]
 LOGIN_REDIRECT_URL = '/HeroHoursRemake/HeroHours/'
 LOGIN_URL = '/HeroHours/login/'
