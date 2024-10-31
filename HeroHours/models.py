@@ -44,7 +44,6 @@ class ActivityLog(models.Model):
         ('inactive user', 'Inactive User'),
     ]
 
-    # user = models.ForeignKey(Users, on_delete=models.CASCADE)  # Assuming userID is a string; adjust type as necessary
     user = models.ForeignKey(Users, models.CASCADE, blank=True, null=True)
     entered = models.TextField()
     operation = models.CharField(max_length=10, choices=OPERATION_CHOICES)
