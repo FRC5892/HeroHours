@@ -131,11 +131,14 @@ class UsersAdmin(admin.ModelAdmin):
 
 
 class ActivityAdminView(admin.ModelAdmin):
-    list_display = ('userID', 'get_name', 'get_op', 'get_status', 'timestamp', 'get_date_only')
+    list_display = ('get_user_id', 'get_name', 'get_op', 'get_status', 'timestamp', 'get_date_only')
+
     search_fields = ['timestamp']
 
     def get_date_only(self, obj):
         return timezone.localtime(obj.timestamp).date()
+    def get_user_id(self, obj):
+        return obj.user.User_ID
 
     get_date_only.short_description = 'Date'
 
