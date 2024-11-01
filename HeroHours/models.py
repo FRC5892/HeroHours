@@ -52,7 +52,7 @@ class ActivityLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)  # Automatically set the timestamp when creating
 
     def __str__(self):
-        return f"{self.userID} - {self.operation} - {self.status} - {self.timestamp}"
+        return f"{self.user_id} - {self.operation} - {self.status} - {self.timestamp}"
 
     class Meta:
         ordering = ['-timestamp']  # Order by most recent logs first
