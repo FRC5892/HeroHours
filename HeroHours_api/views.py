@@ -48,8 +48,7 @@ class MeetingPullAPI(APIView):
 
     def get(self, request, day, month, year, *args, **kwargs):
         query = (ActivityLog.objects.all()
-                 .exclude(operation='None')
-                 .filter(timestamp__day=str(day),timestamp__month=str(month),timestamp__year=str(year))
+                 .filter(timestamp__day=str(day),timestamp__month=str(month),timestamp__year=str(year),operation='Check In')
                  ).values('user_id','user__First_Name','user__Last_Name')
         members = list(query)
         return Response(members, status=status.HTTP_200_OK)
