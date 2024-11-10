@@ -39,10 +39,10 @@ class URLTokenAuthentication(BaseAuthentication):
     """
     Simple token based authentication.
 
-    Clients should authenticate by passing the token key in the "Authorization"
-    HTTP header, prepended with the string "Token ".  For example:
+    Clients should authenticate by passing the token key in the "key"
+    url parameter, For example:
 
-        Authorization: Token 401f7ac837da42b97f613d789819ff93537bee6a
+        https://example.com/api/?key=401f7ac837da42b97f613d789819ff93537bee6a
     """
 
     keyword = 'Token'
@@ -62,11 +62,11 @@ class URLTokenAuthentication(BaseAuthentication):
     """
 
     def authenticate(self, request):
-        auth = get_authorization_header(request)
+        auth = get_authorization_key(request)
         try:
             token = auth.decode()
         except UnicodeError:
-            msg = _('Invalid token header. Token string should not contain invalid characters.')
+            msg = _('Invalid key url parameter. Token string should not contain invalid characters.')
             raise exceptions.AuthenticationFailed(msg)
 
         return self.authenticate_credentials(token)
@@ -87,12 +87,12 @@ class URLTokenAuthentication(BaseAuthentication):
         return self.keyword
 
 
-def get_authorization_header(request):
+def get_authorization_key(request):
     # TODO: make this look correct (change comments and names)
     """
-    Return request's 'Authorization:' header, as a bytestring.
+    Return request's 'key' parameter, as a bytestring.
 
-    Hide some test client ickyness where the header can be unicode.
+    Hide some test client ickyness where the parameter can be unicode.
     """
     auth = request.GET.get('key', b'')
     print(auth)
