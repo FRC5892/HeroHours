@@ -13,6 +13,7 @@ class Users(models.Model):
     Last_Out = models.DateTimeField(null=True)
     Is_Active = models.BooleanField(default=True)
 
+
     def get_total_hours(self):
         #print(f"Total Seconds: {self.Total_Seconds}")
         hours, remainder = divmod(int(self.Total_Seconds), 3600)
@@ -43,14 +44,15 @@ class ActivityLog(models.Model):
         ('inactive user', 'Inactive User'),
     ]
 
-    userID = models.CharField(max_length=255)  # Assuming userID is a string; adjust type as necessary
+    user = models.ForeignKey(Users, models.CASCADE, blank=True, null=True)
+    entered = models.TextField()
     operation = models.CharField(max_length=10, choices=OPERATION_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
     message = models.TextField(default='')  # Optional message field
     timestamp = models.DateTimeField(auto_now_add=True)  # Automatically set the timestamp when creating
 
     def __str__(self):
-        return f"{self.userID} - {self.operation} - {self.status} - {self.timestamp}"
+        return f"{self.user_id} - {self.operation} - {self.status} - {self.timestamp}"
 
     class Meta:
         ordering = ['-timestamp']  # Order by most recent logs first
