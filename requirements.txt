@@ -18,6 +18,7 @@ Django==5.1.2
 django-debug-toolbar==4.4.6
 django-sslserver==0.22
 djangorestframework==3.15.2
+djangorestframework-csv==3.0.2
 Flask==3.0.3
 gunicorn==23.0.0
 idna==3.10
