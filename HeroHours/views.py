@@ -36,38 +36,39 @@ def index(request):
 @permission_required("HeroHours.change_users", raise_exception=True)
 def handle_entry(request):
     start_time = time.time()
-    user_id = request.POST.get('user_input')
+    user_input = request.POST.get('user_input')
     right_now = timezone.now()
     #profiler = cProfile.Profile()
     #profiler.enable()
 
     # Handle special commands first
-    if handle_special_commands(user_id):
+    if handle_special_commands(user_input):
         elapsed_time = time.time() - start_time
         print(f"input(before) execution time: {elapsed_time:.4f} seconds")
-        return handle_special_commands(user_id)
+        return handle_special_commands(user_input)
 
-    if user_id in ['-404', '+404']:
+    if user_input in ['-404', '+404']:
         elapsed_time = time.time() - start_time
         print(f"input(before) execution time: {elapsed_time:.4f} seconds")
-        return handle_bulk_updates(user_id)
+        return handle_bulk_updates(user_input)
 
     log = models.ActivityLog(
-        userID=user_id,
+        entered=user_input,
         operation='None',
         status='Error',  # Initial status
     )
     count = models.Users.objects.only("Checked_In").filter(Checked_In=True).count()
     try:
-        user = models.Users.objects.filter(User_ID=user_id).first()
+        user = models.Users.objects.filter(User_ID=user_input).first()
+        log.user = user
         if not user:
             log.status = "User Not Found"
             log.save()
             return JsonResponse(
-                {'status': 'User Not Found', 'user_id': user_id, 'operation': None, 'newlog': model_to_dict(log),
+                {'status': 'User Not Found', 'user_id': None, 'operation': None, 'newlog': model_to_dict(log),
                  'count': count})
     except Exception as e:
-        return JsonResponse({'status': "Error", 'newlog': {'userID': user_id, 'operation': "None", 'status': 'Error',
+        return JsonResponse({'status': "Error", 'newlog': {'userID': user_input, 'operation': "None", 'status': 'Error',
                                                            'message': e.__str__()}, 'state': None, 'count': count})
 
     # Perform Check-In or Check-Out operations
@@ -118,7 +119,7 @@ def handle_bulk_updates(user_id):
         getall = models.Users.objects.filter(Checked_In=True)
 
     for user in getall:
-        log = models.ActivityLog(userID=user.User_ID, operation='Check In' if user_id == '-404' else 'Check Out',
+        log = models.ActivityLog(user_id=user.User_ID,entered=user.User_ID, operation='Check In' if user_id == '-404' else 'Check Out',
                                  status='Success')
 
         if user_id == '-404':

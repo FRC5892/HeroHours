@@ -132,20 +132,23 @@ class UsersAdmin(admin.ModelAdmin):
 
 
 class ActivityAdminView(admin.ModelAdmin):
-    list_display = ('userID', 'get_name', 'get_op', 'get_status', 'timestamp', 'get_date_only')
+    list_display = ('get_entered_data', 'get_name', 'get_op', 'get_status', 'timestamp', 'get_date_only')
+    readonly_fields = ('user','entered','status','operation','message')
     search_fields = ['timestamp']
 
     def get_date_only(self, obj):
         return timezone.localtime(obj.timestamp).date()
+    def get_entered_data(self, obj):
+        return obj.entered
+    get_entered_data.short_description = 'Entered'
+
 
     get_date_only.short_description = 'Date'
 
     def get_name(self, obj):
-        names = Users.objects.only('First_Name', 'Last_Name').get(User_ID=obj.userID)
-        #TODO fix this
-        #this is extremely slow - just a quick addition that will need to be optimized
-        #it queries for each log, which is bad.
-        return f'{names.First_Name} {names.Last_Name}'
+        if obj.user:
+            return f'{obj.user.First_Name} {obj.user.Last_Name}'
+        return  'None'
     get_name.short_description = 'Name'
 
     def get_status(self, obj):

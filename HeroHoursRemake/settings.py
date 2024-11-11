@@ -95,7 +95,7 @@ DATABASES = {
     'default': dj_database_url.config(default=os.environ['DATABASE_URL'], conn_max_age=600, ssl_require=True)
 }
 default_database = os.environ.get('DJANGO_DATABASE', 'default')
-#DATABASES['default'] = DATABASES[default_database]
+DATABASES['default'] = DATABASES[default_database]
 
 
 

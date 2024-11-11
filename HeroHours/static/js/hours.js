@@ -123,7 +123,7 @@ async function handleFormSubmission(event) {
       playSound(body.status);
       // update the color of the user effected
       if (body.state != null) {
-        document.getElementById(body.newlog.userID).className = body.state
+        document.getElementById(body.newlog.user).className = body.state
           ? "member checkedIn"
           : "member ";
       }
@@ -185,7 +185,7 @@ async function addRow(item) {
 
   // Create and append the first cell (UserID)
   let cell1 = newRow.insertCell(0);
-  cell1.innerHTML = item.userID;
+  cell1.innerHTML = item.entered;
 
   // Create and append the second cell (Operation)
   let cell2 = newRow.insertCell(1);

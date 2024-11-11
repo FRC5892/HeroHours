@@ -31,7 +31,7 @@
     <tbody id="logBody">
         {% for item in local_log_entries %}
             <tr class = "{% if item.status == 'User Not Found' %}warning {% elif item.status == 'Inactive User' %} error {% else%} {{ item.status }} {% endif %} bg">
-                <td class="">{{ item.userID }}</td>
+                <td class="">{{ item.entered }}</td>
                 <td class="">
                     <span class="{% if item.operation == 'Check In' %}success{% elif item.operation == 'Check Out' %}check-out {% else %}warning{% endif %} label">
                         {{ item.operation }}
