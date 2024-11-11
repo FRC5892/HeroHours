@@ -30,7 +30,7 @@ def index(request):
                   {'usersData': usersData,
                    "checked_in": users_checked_in,
                    'local_log_entries': local_log_entries,
-                   'gtag': os.environ['GTAG']})
+                   'gtag': os.environ['GTAG_ID']})
 
 
 @permission_required("HeroHours.change_users", raise_exception=True)
