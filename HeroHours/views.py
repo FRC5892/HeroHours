@@ -23,7 +23,7 @@ load_dotenv(find_dotenv())
 def index(request):
     # Query all users from the database
     usersData = models.Users.objects.filter(Is_Active=True)
-    users_checked_in = models.Users.objects.filter(Checked_In=True).count()
+    users_checked_in = models.Users.objects.filter(Checked_In=True, Is_Active=True).count()
     local_log_entries = models.ActivityLog.objects.all()[:9]  #limits to loading only 9 entries
     # Pass the users data to the template
     return render(request, 'members.html',
@@ -57,7 +57,7 @@ def handle_entry(request):
         operation='None',
         status='Error',  # Initial status
     )
-    count = models.Users.objects.only("Checked_In").filter(Checked_In=True).count()
+    count = models.Users.objects.only("Checked_In").filter(Checked_In=True, Is_Active=True).count()
     try:
         user = models.Users.objects.filter(User_ID=user_input).first()
         log.user = user
@@ -114,12 +114,12 @@ def handle_bulk_updates(user_id):
     if user_id == '-404':
         if not os.environ.get('DEBUG', 'False') == 'True':
             return redirect('index')
-        getall = models.Users.objects.filter(Checked_In=False)
+        getall = models.Users.objects.filter(Checked_In=False, Is_Active=True)
     else:
-        getall = models.Users.objects.filter(Checked_In=True)
+        getall = models.Users.objects.filter(Checked_In=True, Is_Active=True)
 
     for user in getall:
-        log = models.ActivityLog(user_id=user.User_ID,entered=user.User_ID, operation='Check In' if user_id == '-404' else 'Check Out',
+        log = models.ActivityLog(user_id=user.User_ID, entered=user.User_ID, operation='Check In' if user_id == '-404' else 'Check Out',
                                  status='Success')
 
         if user_id == '-404':
@@ -127,8 +127,15 @@ def handle_bulk_updates(user_id):
             user.Last_In = right_now
         else:
             user.Checked_In = False
-            user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (right_now - user.Last_In),
+            try:
+                if user.Last_In:
+                    user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (right_now - user.Last_In),
                                                  output_field=DurationField())
+                else:
+                    user.Last_In = right_now
+            except Exception as e:
+                print(repr(e))
+                print(user)
             user.Total_Seconds = F('Total_Seconds') + round((right_now - user.Last_In).total_seconds())
             user.Last_Out = right_now
 
@@ -209,7 +216,7 @@ def send_data_to_google_sheet(request):
     print(serialized_data)
     together = [serialized_data, serialized_data2]
     all_data = json.dumps(obj=together)
-    count = users.filter(Checked_In=True).count()
+    count = users.filter(Checked_In=True, Is_Active=True).count()
 
     # Send POST request to the Apps Script API
     try:

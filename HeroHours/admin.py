@@ -29,13 +29,16 @@ def check_out(modeladmin, request, queryset):
     updated_log = []
     for user in getall:
         lognew = models.ActivityLog(
-            userID=user.User_ID,
+            user=models.Users.objects.filter(User_ID=user.User_ID).first(),
             operation='Check Out',
             status='Success',  # Initial status
         )
         user.Checked_In = False
-        user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (timezone.now() - user.Last_In),
-                                             output_field=DurationField())
+        if user.Last_In:
+            user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (timezone.now() - user.Last_In),
+                                                 output_field=DurationField())
+        else:
+            user.Last_In = timezone.now()
         #print((timezone.now() - user.Last_In).total_seconds())
         user.Total_Seconds += round((timezone.now() - user.Last_In).total_seconds())
         user.Last_Out = timezone.now()
@@ -49,7 +52,7 @@ def check_out(modeladmin, request, queryset):
 def check_in(modeladmin, request, queryset):
     updated_users = []
     updated_log = []
-    getall = queryset.filter(Checked_In=False)
+    getall = queryset.filter(Checked_In=False, Is_Active=True)
     for user in getall:
         lognew = models.ActivityLog(
             userID=user.User_ID,
