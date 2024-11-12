@@ -2,6 +2,8 @@ import json
 import time
 import requests
 import os
+
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import F, DurationField, ExpressionWrapper
 from django.shortcuts import render, redirect
@@ -21,14 +23,14 @@ load_dotenv(find_dotenv())
 def index(request):
     # Query all users from the database
     usersData = models.Users.objects.filter(Is_Active=True)
-    users_checked_in = models.Users.objects.filter(Checked_In=True).count()
+    users_checked_in = models.Users.objects.filter(Checked_In=True, Is_Active=True).count()
     local_log_entries = models.ActivityLog.objects.all()[:9]  #limits to loading only 9 entries
-    #print(local_log_entries)
-    print(timezone.now())
-
     # Pass the users data to the template
     return render(request, 'members.html',
-                  {'usersData': usersData, "checked_in": users_checked_in, 'local_log_entries': local_log_entries})
+                  {'usersData': usersData,
+                   "checked_in": users_checked_in,
+                   'local_log_entries': local_log_entries,
+                   'gtag': os.environ['GTAG_ID']})
 
 
 @permission_required("HeroHours.change_users", raise_exception=True)
@@ -55,7 +57,7 @@ def handle_entry(request):
         operation='None',
         status='Error',  # Initial status
     )
-    count = models.Users.objects.only("Checked_In").filter(Checked_In=True).count()
+    count = models.Users.objects.only("Checked_In").filter(Checked_In=True, Is_Active=True).count()
     try:
         user = models.Users.objects.filter(User_ID=user_input).first()
         log.user = user
@@ -73,7 +75,6 @@ def handle_entry(request):
     elapsed_time = time.time() - start_time
     print(f"input(before) execution time: {elapsed_time:.4f} seconds")
     operation_result = check_in_or_out(user, right_now, log, count)
-    print(timezone.now())
     #profiler.disable()
     #stats = pstats.Stats(profiler)
     #stats.strip_dirs()
@@ -98,6 +99,10 @@ def handle_special_commands(user_id):
         elapsed_time = time.time() - start_time
         print(f"input(admin) execution time: {elapsed_time:.4f} seconds")
         return redirect('/admin/')
+    if user_id == "logout":
+        elapsed_time = time.time() - start_time
+        print(f"input(logout) execution time: {elapsed_time:.4f} seconds")
+        return redirect('logout')
 
 
 def handle_bulk_updates(user_id):
@@ -109,12 +114,12 @@ def handle_bulk_updates(user_id):
     if user_id == '-404':
         if not os.environ.get('DEBUG', 'False') == 'True':
             return redirect('index')
-        getall = models.Users.objects.filter(Checked_In=False)
+        getall = models.Users.objects.filter(Checked_In=False, Is_Active=True)
     else:
-        getall = models.Users.objects.filter(Checked_In=True)
+        getall = models.Users.objects.filter(Checked_In=True, Is_Active=True)
 
     for user in getall:
-        log = models.ActivityLog(user_id=user.User_ID,entered=user.User_ID, operation='Check In' if user_id == '-404' else 'Check Out',
+        log = models.ActivityLog(user_id=user.User_ID, entered=user.User_ID, operation='Check In' if user_id == '-404' else 'Check Out',
                                  status='Success')
 
         if user_id == '-404':
@@ -122,8 +127,15 @@ def handle_bulk_updates(user_id):
             user.Last_In = right_now
         else:
             user.Checked_In = False
-            user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (right_now - user.Last_In),
+            try:
+                if user.Last_In:
+                    user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (right_now - user.Last_In),
                                                  output_field=DurationField())
+                else:
+                    user.Last_In = right_now
+            except Exception as e:
+                print(repr(e))
+                print(user)
             user.Total_Seconds = F('Total_Seconds') + round((right_now - user.Last_In).total_seconds())
             user.Last_Out = right_now
 
@@ -140,7 +152,10 @@ def handle_bulk_updates(user_id):
 
 def check_in_or_out(user, right_now, log, count):
     start_time = time.time()
-    count2=count
+    count2 = count
+    logged_time = "None"
+    change = "None"
+    orig = user.Total_Seconds
     if user.Checked_In:
         count2 -= 1
         state = False
@@ -148,6 +163,7 @@ def check_in_or_out(user, right_now, log, count):
         user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (right_now - user.Last_In),
                                              output_field=DurationField())
         user.Total_Seconds = F('Total_Seconds') + round((right_now - user.Last_In).total_seconds())
+        change = round((right_now - user.Last_In).total_seconds())
         user.Last_Out = right_now
     else:
         count2 += 1
@@ -165,6 +181,7 @@ def check_in_or_out(user, right_now, log, count):
     else:
         count = count2
         user.save()
+        logged_time = get_time(orig, change)
 
     # Save log and user updates
     log.save()
@@ -175,7 +192,17 @@ def check_in_or_out(user, right_now, log, count):
         'state': state,
         'newlog': model_to_dict(log),
         'count': count,
+        'newtime': logged_time,
     }
+
+
+def get_time(orig: float, change: int) -> str:
+    if change == "None":
+        return "None"
+    total_time: int = int(orig)+change
+    hours, remainder = divmod(int(total_time), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours}h {minutes}m {seconds}s"
 
 
 APP_SCRIPT_URL = os.environ['APP_SCRIPT_URL']
@@ -189,7 +216,7 @@ def send_data_to_google_sheet(request):
     print(serialized_data)
     together = [serialized_data, serialized_data2]
     all_data = json.dumps(obj=together)
-    count = users.filter(Checked_In=True).count()
+    count = users.filter(Checked_In=True, Is_Active=True).count()
 
     # Send POST request to the Apps Script API
     try:
@@ -206,3 +233,8 @@ def send_data_to_google_sheet(request):
         print("failed")
         print(e)
         return JsonResponse({'status': 'error', 'message': str(e), 'count': count})
+
+
+def logout_view(request):
+    logout(request)
+    return redirect('login')

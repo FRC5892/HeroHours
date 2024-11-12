@@ -7,6 +7,7 @@ import django.contrib.auth.models as authModels
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.auth.decorators import user_passes_test
+from django.db.models import ExpressionWrapper, F, DurationField
 from django.forms import model_to_dict
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
@@ -28,13 +29,16 @@ def check_out(modeladmin, request, queryset):
     updated_log = []
     for user in getall:
         lognew = models.ActivityLog(
-            userID=user.User_ID,
+            user=models.Users.objects.filter(User_ID=user.User_ID).first(),
             operation='Check Out',
             status='Success',  # Initial status
         )
         user.Checked_In = False
-        user.Total_Hours = (
-                datetime.combine(datetime.today(), user.Total_Hours) + (timezone.now() - user.Last_In)).time()
+        if user.Last_In:
+            user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (timezone.now() - user.Last_In),
+                                                 output_field=DurationField())
+        else:
+            user.Last_In = timezone.now()
         #print((timezone.now() - user.Last_In).total_seconds())
         user.Total_Seconds += round((timezone.now() - user.Last_In).total_seconds())
         user.Last_Out = timezone.now()
@@ -48,7 +52,7 @@ def check_out(modeladmin, request, queryset):
 def check_in(modeladmin, request, queryset):
     updated_users = []
     updated_log = []
-    getall = queryset.filter(Checked_In=False)
+    getall = queryset.filter(Checked_In=False, Is_Active=True)
     for user in getall:
         lognew = models.ActivityLog(
             userID=user.User_ID,

@@ -13,7 +13,7 @@
             </div>
             <!-- Display the user's total hours -->
             <div class="member-hours">
-                <label>Hours:</label> {{ row.get_total_hours }}
+                <label>Hours:</label> <p id="hours-{{ row.User_ID }}">{{ row.get_total_hours }}</p>
             </div>
         </div>
     </div>

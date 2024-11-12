@@ -88,7 +88,7 @@ async function handleFormSubmission(event) {
   console.time('benchmark');
   let serialized_data = new URLSearchParams(new FormData(this)).toString();
   let data = serialized_data.split("&")[1].split("=")[1];
-  if (data == "-404" || data == "%2B404" || data == "*"||data == 'admin') {
+  if (data == "-404" || data == "%2B404" || data == "*"||data == 'admin'||data=='logout') {
     // let html5 handle it & reload the whole page
     return;
   }
@@ -126,6 +126,9 @@ async function handleFormSubmission(event) {
         document.getElementById(body.newlog.user).className = body.state
           ? "member checkedIn"
           : "member ";
+      }
+      if (body.newtime !="None"){
+        document.getElementById(`hours-${body.newlog.userID}`).innerHTML = body.newtime;
       }
       // add it to the log
       addRow(body.newlog);

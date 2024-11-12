@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     'debug_toolbar',
     'sslserver',
 ]
-LOGIN_REDIRECT_URL = '/HeroHoursRemake/HeroHours/'
+LOGIN_REDIRECT_URL = '/HeroHours/'
 LOGIN_URL = '/HeroHours/login/'
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
