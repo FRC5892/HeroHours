@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'HeroHours.apps.HeroHoursConfig',
     'debug_toolbar',
     'sslserver',
+    'rest_framework',
+    'rest_framework.authtoken',
 ]
 LOGIN_REDIRECT_URL = '/HeroHoursRemake/HeroHours/'
 LOGIN_URL = '/HeroHours/login/'
@@ -91,6 +93,10 @@ DATABASES = {
     'local': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+    },
+    'postgress': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': BASE_DIR / 'db.psql',
     },
     'default': dj_database_url.config(default=os.environ['DATABASE_URL'], conn_max_age=600, ssl_require=True)
 }
@@ -145,5 +151,5 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CSRF_TRUSTED_ORIGINS = ['https://hero-hours-2bf608a75758.herokuapp.com']
-SECURE_SSL_REDIRECT = True
+# SECURE_SSL_REDIRECT = True
 APPEND_SLASH = True

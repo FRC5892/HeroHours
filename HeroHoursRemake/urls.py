@@ -28,6 +28,7 @@ def root_redirect(request):
     return redirect('/HeroHours/')
 urlpatterns = [
     path('HeroHours/', include('HeroHours.urls')),
+    path('api/', include('HeroHours_api.urls')),
     path('favicon.ico', favicon),
     path('admin/', admin.site.urls),
     path('test/', home),

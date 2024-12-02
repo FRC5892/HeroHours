@@ -16,10 +16,13 @@ from django.utils.translation import gettext_lazy as _
 from HeroHours.forms import CustomActionForm
 from . import models
 from .models import Users, ActivityLog
+from rest_framework.authtoken.admin import TokenAdmin
 
 
 # Register your models here.
 
+
+TokenAdmin.raw_id_fields = ['user']
 
 @admin.action(description="Check Out Users")
 def check_out(modeladmin, request, queryset):

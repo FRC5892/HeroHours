@@ -1,16 +1,22 @@
+import base64
 import json
 import time
 import requests
 import os
+
+from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import BadRequest, PermissionDenied
 from django.db.models import F, DurationField, ExpressionWrapper
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.core import serializers
+from django.utils.http import urlsafe_base64_decode
 from dotenv import load_dotenv, find_dotenv
+from kombu.exceptions import HttpError
 
 from . import models
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.forms.models import model_to_dict
 
 load_dotenv(find_dotenv())
@@ -206,3 +212,18 @@ def send_data_to_google_sheet(request):
         print("failed")
         print(e)
         return JsonResponse({'status': 'error', 'message': str(e), 'count': count})
+def sheet_pull(request):
+    key = request.GET.get('key')
+    if not key:
+        raise BadRequest()
+
+    username, password = base64.b64decode(key).decode('ascii').split(":")
+    user = authenticate(request, username=username, password=password)
+    if not user:
+        print(user)
+        raise PermissionDenied()
+    members = models.Users.objects.all()
+    response = 'User_ID,First_Name,Last_Name,Total_Hours,Total_Seconds,Last_In,Last_Out,Is_Active,\n'
+    for member in members:
+        response += f"{member.User_ID},{member.First_Name},{member.Last_Name},{member.get_total_hours()},{member.Total_Seconds},{member.Last_In},{member.Last_Out},{member.Is_Active}\n"
+    return HttpResponse(response,content_type='text/csv')
