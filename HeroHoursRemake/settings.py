@@ -153,3 +153,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CSRF_TRUSTED_ORIGINS = ['https://hero-hours-2bf608a75758.herokuapp.com']
 # SECURE_SSL_REDIRECT = True
 APPEND_SLASH = True
+SESSION_COOKIE_AGE=7200
