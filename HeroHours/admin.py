@@ -54,7 +54,7 @@ def check_in(modeladmin, request, queryset):
     getall = queryset.filter(Checked_In=False)
     for user in getall:
         lognew = models.ActivityLog(
-            userID=user.User_ID,
+            user_id=user.User_ID,
             operation='Check In',
             status='Success',  # Initial status
         )

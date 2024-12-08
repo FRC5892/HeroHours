@@ -94,11 +94,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     },
-    'postgress': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': BASE_DIR / 'db.psql',
-    },
-    'default': dj_database_url.config(default=os.environ['DATABASE_URL'], conn_max_age=600, ssl_require=True)
+    'default': dj_database_url.config(default=os.environ['DATABASE_URL'], conn_max_age=600, ssl_require=not DEBUG)
 }
 default_database = os.environ.get('DJANGO_DATABASE', 'default')
 DATABASES['default'] = DATABASES[default_database]
@@ -151,6 +147,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CSRF_TRUSTED_ORIGINS = ['https://hero-hours-2bf608a75758.herokuapp.com']
-# SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = not DEBUG
 APPEND_SLASH = True
 SESSION_COOKIE_AGE=7200

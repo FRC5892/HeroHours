@@ -95,7 +95,6 @@ def get_authorization_key(request):
     Hide some test client ickyness where the parameter can be unicode.
     """
     auth = request.GET.get('key', b'')
-    print(auth)
     if isinstance(auth, str):
         # Work around django test client oddness
         auth = auth.encode(HTTP_HEADER_ENCODING)
