@@ -7,7 +7,7 @@ import django.contrib.auth.models as authModels
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.auth.decorators import user_passes_test
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, BadRequest
 from django.forms import model_to_dict
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
@@ -82,7 +82,7 @@ create_staff_user_action.short_description = "Create a Staff User"
 
 
 class TotalHoursFilter(SimpleListFilter):
-    title = _('total hours')  # Display title in the admin filter sidebar
+    title = _('Total Hours')  # Display title in the admin filter sidebar
     parameter_name = 'total_hours'  # URL parameter
 
     def lookups(self, request, model_admin):
@@ -91,17 +91,32 @@ class TotalHoursFilter(SimpleListFilter):
             ('1hour', _('Less than 1 hour')),
             ('5hours', _('Less than 5 hours')),
             ('10hours', _('Less than 10 hours')),
+            ('25hours', _('Less than 25 hours')),
+
+            ('o25hours', _('Over 25 hours')),
+            ('o50hours',_('Over 50 hours'))
         ]
 
     def queryset(self, request, queryset):
-        # Filtering based on 'Total_Seconds' (since 1 hour = 3600 seconds)
-        if self.value() == '1hour':
-            return queryset.filter(Total_Seconds__lt=3600)
-        elif self.value() == '5hours':
-            return queryset.filter(Total_Seconds__lt=3600 * 5)
-        elif self.value() == '10hours':
-            return queryset.filter(Total_Seconds__lt=3600 * 10)
-        return queryset
+        """Filter by hours using the stored Total Seconds"""
+        # Negative numbers mean less than, positive is greater than
+        under_values = {
+            '1hour':-3600,
+            '5hours':-3600*5,
+            '10hours':-3600*10,
+            '25hours':-3600*25,
+            'o25hours':3600*25,
+            'o50hours':3600*50
+        }
+        seconds = under_values.get(self.value())
+        if seconds is None:
+            # Not for us
+            return queryset
+
+        if seconds < 1:
+            return queryset.filter(Total_Seconds__lt=-seconds)
+        else:
+            return queryset.filter(Total_Seconds__gt=seconds)
 
 
 @admin.action(description="Export Selected")
