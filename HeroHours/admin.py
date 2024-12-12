@@ -7,18 +7,20 @@ import django.contrib.auth.models as authModels
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.auth.decorators import user_passes_test
+from django.core.exceptions import PermissionDenied
 from django.forms import model_to_dict
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-
+from django.utils.text import capfirst
 from HeroHours.forms import CustomActionForm
 from . import models
 from .models import Users, ActivityLog
 from rest_framework.authtoken.admin import TokenAdmin
-
-
+from django.contrib.admin.utils import (unquote)
+from django.contrib.admin.options import get_content_type_for_model
+from django.template.response import TemplateResponse
 # Register your models here.
 
 
@@ -31,7 +33,7 @@ def check_out(modeladmin, request, queryset):
     updated_log = []
     for user in getall:
         lognew = models.ActivityLog(
-            userID=user.User_ID,
+            user_id=user.User_ID,
             operation='Check Out',
             status='Success',  # Initial status
         )
@@ -54,7 +56,7 @@ def check_in(modeladmin, request, queryset):
     getall = queryset.filter(Checked_In=False)
     for user in getall:
         lognew = models.ActivityLog(
-            userID=user.User_ID,
+            user_id=user.User_ID,
             operation='Check In',
             status='Success',  # Initial status
         )
@@ -80,7 +82,7 @@ create_staff_user_action.short_description = "Create a Staff User"
 
 
 class TotalHoursFilter(SimpleListFilter):
-    title = _('total hours less than')  # Display title in the admin filter sidebar
+    title = _('total hours')  # Display title in the admin filter sidebar
     parameter_name = 'total_hours'  # URL parameter
 
     def lookups(self, request, model_admin):
@@ -131,6 +133,96 @@ class UsersAdmin(admin.ModelAdmin):
 
     display_total_hours.short_description = "Total Hours"
     display_total_hours.admin_order_field = "Total_Seconds"
+
+
+    """
+        Custom history view, modified from Django source
+        
+        Copyright (c) Django Software Foundation and individual contributors.
+        All rights reserved.
+        
+        Redistribution and use in source and binary forms, with or without modification,
+        are permitted provided that the following conditions are met:
+        
+            1. Redistributions of source code must retain the above copyright notice,
+               this list of conditions and the following disclaimer.
+        
+            2. Redistributions in binary form must reproduce the above copyright
+               notice, this list of conditions and the following disclaimer in the
+               documentation and/or other materials provided with the distribution.
+        
+            3. Neither the name of Django nor the names of its contributors may be used
+               to endorse or promote products derived from this software without
+               specific prior written permission.
+        
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+        ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+        WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+        DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+        ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+        (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+        LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+        ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+        (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+        SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+    """
+    def history_view(self, request, object_id, extra_context=None):
+        "The 'history' admin view for this model."
+        from django.contrib.admin.views.main import PAGE_VAR
+
+        # First check if the user can see this history.
+        model = self.model
+        obj = self.get_object(request, unquote(object_id))
+        if obj is None:
+            return self._get_obj_does_not_exist_redirect(
+                request, model._meta, object_id
+            )
+
+        if not self.has_view_or_change_permission(request, obj):
+            raise PermissionDenied
+
+        # Then get the history for this object.
+        app_label = self.opts.app_label
+        action_list = (
+            ActivityLog.objects.filter( # modified
+                user_id=unquote(object_id), # modified
+            )
+            .select_related()
+            .order_by('timestamp')
+        )
+
+        paginator = self.get_paginator(request, action_list, 100)
+        page_number = request.GET.get(PAGE_VAR, 1)
+        page_obj = paginator.get_page(page_number)
+        page_range = paginator.get_elided_page_range(page_obj.number)
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": _("Change history: %s") % obj,
+            "subtitle": None,
+            "action_list": page_obj,
+            "page_range": page_range,
+            "page_var": PAGE_VAR,
+            "pagination_required": paginator.count > 100,
+            "module_name": str(capfirst(self.opts.verbose_name_plural)),
+            "object": obj,
+            "opts": self.opts,
+            "preserved_filters": self.get_preserved_filters(request),
+            **(extra_context or {}),
+        }
+
+        request.current_app = self.admin_site.name
+
+        return TemplateResponse(
+            request,
+            self.object_history_template
+            or [
+                "admin/%s/%s/object_history.html" % (app_label, self.opts.model_name),
+                "admin/%s/object_history.html" % app_label,
+                "admin/object_history.html",
+                ],
+            context,
+            )
 
 
 class ActivityAdminView(admin.ModelAdmin):
