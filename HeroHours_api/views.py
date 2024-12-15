@@ -38,8 +38,8 @@ class MeetingListRender(csv_renderers.CSVRenderer):
     header = ['user_id','user__Last_Name','user__First_Name']
     labels = {
         'user_id': 'Id',
-        'Last_Name': 'Last Name',
-        'First_Name': 'First Name',
+        'user__Last_Name': 'Last Name',
+        'user__First_Name': 'First Name',
     }
 class MeetingPullAPI(APIView):
     renderer_classes = [MeetingListRender]
