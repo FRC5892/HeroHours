@@ -26,7 +26,7 @@ from django.template.response import TemplateResponse
 
 TokenAdmin.raw_id_fields = ['user']
 
-@admin.action(description="Check Out Users")
+@admin.action(description="Check Out Members")
 def check_out(modeladmin, request, queryset):
     getall = queryset.filter(Checked_In=True)
     updated_users = []
@@ -49,7 +49,7 @@ def check_out(modeladmin, request, queryset):
     models.ActivityLog.objects.bulk_create(updated_log)
 
 
-@admin.action(description="Check In Users")
+@admin.action(description="Check In Members")
 def check_in(modeladmin, request, queryset):
     updated_users = []
     updated_log = []
@@ -67,6 +67,33 @@ def check_in(modeladmin, request, queryset):
     models.Users.objects.bulk_update(updated_users, ["Checked_In", "Total_Hours", "Total_Seconds", "Last_Out"])
     models.ActivityLog.objects.bulk_create(updated_log)
 
+@admin.action(description="Reset Members")
+def reset(modeladmin, request, queryset):
+    updated_users = []
+    updated_log = []
+    for user in queryset:
+        lognew = models.ActivityLog(
+            user_id=user.User_ID,
+            operation='Reset',
+            status='Success',  # Initial status
+        )
+        user.Total_Seconds = 0
+        user.Total_Hours = '0:00:00'
+        user.Last_In = None
+        user.Last_Out = None
+        if user.Checked_In:
+            user.Checked_In = False
+            updated_log.append(
+                models.ActivityLog(
+                    user_id=user.User_ID,
+                    operation='Check Out',
+                    status='Success',
+                )
+            )
+        updated_log.append(lognew)
+        updated_users.append(user)
+    models.Users.objects.bulk_update(updated_users, ["Checked_In", "Total_Hours", "Total_Seconds", "Last_Out", "Last_In"])
+    models.ActivityLog.objects.bulk_create(updated_log)
 
 def create_staff_user_action(modeladmin, request, queryset):
     print(request)
@@ -135,11 +162,11 @@ def export_as_csv(self, request, queryset):
     return response
 
 
-class UsersAdmin(admin.ModelAdmin):
+class MemberAdmin(admin.ModelAdmin):
     list_display = ("User_ID", "First_Name", "Last_Name", "Is_Active", "Checked_In", "display_total_hours")
     readonly_fields = ["Checked_In", "Last_In", "Last_Out"]
     data_hierarchy = "Last_Name"
-    actions = [check_out, check_in, export_as_csv, create_staff_user_action]
+    actions = [check_out, check_in, export_as_csv, create_staff_user_action, reset]
     search_fields = ['User_ID', 'Last_Name', 'First_Name']
     list_filter = ['Checked_In', TotalHoursFilter]
 
@@ -244,6 +271,7 @@ class ActivityAdminView(admin.ModelAdmin):
     list_display = ('get_entered_data', 'get_name', 'get_op', 'get_status', 'timestamp', 'get_date_only')
     readonly_fields = ('user','entered','status','operation','message')
     search_fields = ['timestamp']
+    actions = [export_as_csv]
 
     def get_date_only(self, obj):
         return timezone.localtime(obj.timestamp).date()
@@ -308,7 +336,7 @@ def add_user(request):
 
 # Custom action to create a staff user
 
-admin.site.register(model_or_iterable=Users, admin_class=UsersAdmin)
+admin.site.register(model_or_iterable=Users, admin_class=MemberAdmin)
 admin.site.register(model_or_iterable=ActivityLog, admin_class=ActivityAdminView)
 admin.site.site_header = 'HERO Hours Admin'
 admin.site.site_title = 'HERO Hours Admin'
