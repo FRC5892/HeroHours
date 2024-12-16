@@ -26,8 +26,8 @@ class Users(models.Model):
         verbose_name = "Members"
         verbose_name_plural = "Members"
 
-        def __str__(self):
-            return f"{self.First_Name} {self.Last_Name}: {self.User_ID} - {self.Total_Hours}"
+    def __str__(self):
+        return f"{self.First_Name} {self.Last_Name}: {self.User_ID} - {self.Total_Hours}"
 
 
 class ActivityLog(models.Model):
