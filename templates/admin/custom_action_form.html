@@ -1,8 +1,21 @@
-{% extends "admin/change_form.html" %}
-{% block breadcrumbs %}
-{% endblock %}
+{% extends "admin/base_site.html" %}
+{% block content %}
+    <h1>Enter Information for Creating a Staff User</h1>
 
-{% block inline_field_sets %}
+    <form method="post" action="{% url 'custom' %}">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Create User</button>
+    </form>
+
+    <br>
+    <a href="{% url 'admin:index' %}">Back to Admin</a>
+<script>
+    document.getElementById("id_group_name").addEventListener('change',function(){
+        user = document.getElementById("id_username").value.toString();
+        pw = document.getElementById("id_password").value.toString();
+        window.alert(`${user}\\${pw} COPY THAT DOWN`)
+    })
+</script>
+  {{ admin_tools }}
 {% endblock %}
-{% block submit_buttons_bottom %}
-{%  endblock %}

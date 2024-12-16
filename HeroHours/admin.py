@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.core.exceptions import PermissionDenied, BadRequest
 from django.forms import model_to_dict
 from django.http import HttpResponse
-from django.shortcuts import redirect, render, get_object_or_404
+from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import capfirst
@@ -21,7 +21,6 @@ from rest_framework.authtoken.admin import TokenAdmin
 from django.contrib.admin.utils import (unquote)
 from django.contrib.admin.options import get_content_type_for_model
 from django.template.response import TemplateResponse
-from django.urls import path
 # Register your models here.
 
 
@@ -67,6 +66,20 @@ def check_in(modeladmin, request, queryset):
         updated_users.append(user)
     models.Users.objects.bulk_update(updated_users, ["Checked_In", "Total_Hours", "Total_Seconds", "Last_Out"])
     models.ActivityLog.objects.bulk_create(updated_log)
+
+
+def create_staff_user_action(modeladmin, request, queryset):
+    print(request)
+    selected_user = queryset.first()
+    userdata = model_to_dict(selected_user)
+
+    form = CustomActionForm(
+        initial={'hidden_data': json.dumps({'First_Name': userdata['First_Name'], 'Last_Name': userdata['Last_Name']})})
+    return render(request, 'admin/custom_action_form.html', {'form': form})
+
+
+create_staff_user_action.short_description = "Create a Staff User"
+
 
 class TotalHoursFilter(SimpleListFilter):
     title = _('Total Hours')  # Display title in the admin filter sidebar
@@ -126,30 +139,9 @@ class UsersAdmin(admin.ModelAdmin):
     list_display = ("User_ID", "First_Name", "Last_Name", "Is_Active", "Checked_In", "display_total_hours")
     readonly_fields = ["Checked_In", "Last_In", "Last_Out"]
     data_hierarchy = "Last_Name"
-    actions = [check_out, check_in, export_as_csv]
+    actions = [check_out, check_in, export_as_csv, create_staff_user_action]
     search_fields = ['User_ID', 'Last_Name', 'First_Name']
     list_filter = ['Checked_In', TotalHoursFilter]
-
-    def get_urls(self):
-        urls = super().get_urls()
-        info = self.opts.app_label, self.opts.model_name
-        my_urls = [
-            # path("promote/", self.admin_site.admin_view(self.promote_to_staff_view),name="promote"),
-            path(
-                "<path:object_id>/promote/",
-                self.admin_site.admin_view(self.promote_to_staff_view),
-                name="%s_%s_promote" % info,
-            ),
-        ]
-        return my_urls + urls
-    def promote_to_staff_view(self, request, object_id, extra_context=None):
-        member = get_object_or_404(Users,User_ID=object_id)
-
-
-
-        return render(request, 'admin/custom_action_form.html', {})
-
-
 
     def display_total_hours(self, obj):
         return obj.get_total_hours()
@@ -281,6 +273,8 @@ class ActivityAdminView(admin.ModelAdmin):
 
 def is_superuser(user):
     return user.is_superuser
+
+
 @user_passes_test(is_superuser)
 def add_user(request):
     form_data_dict = request.POST.dict()
