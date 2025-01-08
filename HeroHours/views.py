@@ -128,6 +128,8 @@ def handle_bulk_updates(user_id):
             user.Last_In = right_now
         else:
             user.Checked_In = False
+            if not user.Last_In:
+                user.Last_In = right_now
             user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (right_now - user.Last_In),
                                                  output_field=DurationField())
             user.Total_Seconds = F('Total_Seconds') + round((right_now - user.Last_In).total_seconds())
