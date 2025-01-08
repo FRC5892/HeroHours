@@ -127,6 +127,8 @@ def handle_bulk_updates(user_id):
             user.Checked_In = True
             user.Last_In = right_now
         else:
+            if not user.Last_In:
+                user.Last_In = right_now
             user.Checked_In = False
             user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (right_now - user.Last_In),
                                                  output_field=DurationField())
@@ -151,6 +153,8 @@ def check_in_or_out(user, right_now, log, count):
         count2 -= 1
         state = False
         log.operation = 'Check Out'
+        if not user.Last_In:
+            user.Last_In = right_now
         user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (right_now - user.Last_In),
                                              output_field=DurationField())
         user.Total_Seconds = F('Total_Seconds') + round((right_now - user.Last_In).total_seconds())
