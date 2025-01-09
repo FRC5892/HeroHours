@@ -4,7 +4,7 @@ import time
 import requests
 import os
 
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, logout
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import BadRequest, PermissionDenied
 from django.db.models import F, DurationField, ExpressionWrapper
@@ -55,6 +55,9 @@ def handle_entry(request):
         elapsed_time = time.time() - start_time
         print(f"input(before) execution time: {elapsed_time:.4f} seconds")
         return handle_bulk_updates(user_input)
+    if user_input == "---":
+        logout(request)
+        return redirect('login')
 
     log = models.ActivityLog(
         entered=user_input,
