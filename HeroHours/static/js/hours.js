@@ -199,3 +199,7 @@ async function addRow(item) {
   let cell3 = newRow.insertCell(2);
   cell3.innerHTML = `<span class="${colorClass} label">${item.status}&nbsp;${item.message}</span>`;
 }
+document.addEventListener('keydown', function(event) {
+    if( event.keyCode == 17 || event.keyCode == 74 )
+      event.preventDefault();
+  });
