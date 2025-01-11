@@ -64,3 +64,7 @@ let username = document.getElementsByName("username")[0];
       password.removeEventListener("blur",onBlur);
       username.focus();
     });
+  document.addEventListener('keydown', function(event) {
+    if( event.keyCode == 17 || event.keyCode == 74 )
+      event.preventDefault();
+  });
