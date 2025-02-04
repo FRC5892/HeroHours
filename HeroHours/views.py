@@ -109,11 +109,12 @@ def handle_special_commands(user_id):
         return redirect('/admin/')
 
 
-def handle_bulk_updates(user_id):
+def handle_bulk_updates(user_id, time = None):
+    if time == None:
+        time = timezone.now()
     start_time = time.time()
     updated_users = []
     updated_log = []
-    right_now = timezone.now()
 
     if user_id == '-404':
         if not os.environ.get('DEBUG', 'False') == 'True':
@@ -128,15 +129,15 @@ def handle_bulk_updates(user_id):
 
         if user_id == '-404':
             user.Checked_In = True
-            user.Last_In = right_now
+            user.Last_In = time
         else:
             if not user.Last_In:
-                user.Last_In = right_now
+                user.Last_In = time
             user.Checked_In = False
-            user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (right_now - user.Last_In),
+            user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (time - user.Last_In),
                                                  output_field=DurationField())
-            user.Total_Seconds = F('Total_Seconds') + round((right_now - user.Last_In).total_seconds())
-            user.Last_Out = right_now
+            user.Total_Seconds = F('Total_Seconds') + round((time - user.Last_In).total_seconds())
+            user.Last_Out = time
 
         updated_log.append(log)
         updated_users.append(user)
