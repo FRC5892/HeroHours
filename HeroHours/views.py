@@ -134,15 +134,16 @@ def handle_bulk_updates(user_id, time = None):
             if not user.Last_In:
                 user.Last_In = time
             user.Checked_In = False
-            user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (time - user.Last_In),
-                                                 output_field=DurationField())
-            user.Total_Seconds = F('Total_Seconds') + round((time - user.Last_In).total_seconds())
+            # Calculate actual values instead of using F() expressions
+            time_diff = time - user.Last_In
+            user.Total_Hours = user.Total_Hours + time_diff
+            user.Total_Seconds = user.Total_Seconds + round(time_diff.total_seconds())
             user.Last_Out = time
 
         updated_log.append(log)
         updated_users.append(user)
 
-    models.Users.objects.bulk_update(updated_users, ["Checked_In", "Total_Hours", "Total_Seconds", "Last_Out"])
+    models.Users.objects.bulk_update(updated_users, ["Checked_In", "Total_Hours", "Total_Seconds", "Last_Out", "Last_In"])
     models.ActivityLog.objects.bulk_create(updated_log)
     elapsed_time = time.time() - start_time
     print(f"input(bulk) execution time: {elapsed_time:.4f} seconds")
