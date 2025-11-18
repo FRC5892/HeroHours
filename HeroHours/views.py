@@ -112,7 +112,6 @@ def handle_special_commands(user_id):
 def handle_bulk_updates(user_id, time = None):
     if time == None:
         time = timezone.now()
-    start_time = time.time()
     updated_users = []
     updated_log = []
 
@@ -144,8 +143,6 @@ def handle_bulk_updates(user_id, time = None):
 
     models.Users.objects.bulk_update(updated_users, ["Checked_In", "Total_Hours", "Total_Seconds", "Last_Out"])
     models.ActivityLog.objects.bulk_create(updated_log)
-    elapsed_time = time.time() - start_time
-    print(f"input(bulk) execution time: {elapsed_time:.4f} seconds")
     # Redirect to index after bulk updates
     return redirect('index')
 
@@ -235,3 +232,8 @@ def sheet_pull(request):
     for member in members:
         response += f"{member.User_ID},{member.First_Name},{member.Last_Name},{member.get_total_hours()},{member.Total_Seconds},{member.Last_In},{member.Last_Out},{member.Is_Active}\n"
     return HttpResponse(response,content_type='text/csv')
+
+
+def logout_view(request):
+    logout(request)
+    return redirect('login')
