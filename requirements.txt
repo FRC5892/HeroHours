@@ -42,8 +42,8 @@ MarkupSafe==2.1.5
 msgpack==1.1.2
 packaging==24.1
 prompt_toolkit==3.0.48
-psycopg==3.2.3
-psycopg-c==3.2.3
+psycopg2==2.9.9
+psycopg2-binary==2.9.9
 py-ubjson==0.16.1
 pyasn1==0.6.1
 pyasn1_modules==0.4.2
