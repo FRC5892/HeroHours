@@ -1,0 +1,204 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Attendance | HeroHours</title>
+    <link rel="stylesheet" href="{% static 'css/picnic.min.css' %}" />
+    <style>
+        body { padding: 80px; font-family: sans-serif; }
+
+        /* Table Styles */
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+
+        /* Row States */
+        tr.checked-in {
+            background-color: #e8f5e9;
+        }
+        tr.checked-in:nth-child(even) {
+            background-color: #d6edd8; /* A light gray color */
+        }
+        tr.checked-out {
+            background-color: #bccdfe;
+        }
+        tr.bold {
+            transform: scale(1.15);
+        }
+        tr {
+            transition: transform 0.25s ease,
+            background-color 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live Attendance <span class="label error" id="ws-status">Disconnected</span></h1>
+    <p>Members will highlight when they log in.</p>
+    <p>Currently read only because the code is a mess</p>
+
+    <table class="primary">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>ID</th>
+                <th>Checked In</th>
+                <th>Last In</th>
+                <th>Hours</th>
+            </tr>
+        </thead>
+        <tbody id="members-body">
+            <tr><td colspan="3">Loading members...</td></tr>
+        </tbody>
+    </table>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const tbody = document.getElementById('members-body');
+            const members = {}; // Map ID -> Element (tr)
+
+            // Initialize WebSocket
+            const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+            const wsUrl = wsScheme + '://' + window.location.host + '/ws/live/';
+            const socket = new WebSocket(wsUrl);
+            
+            const REQ_LIST = new Date().getTime();
+            const REQ_SUB = REQ_LIST + 1;
+
+            function createMemberRow(data) {
+                const tr = document.createElement('tr');
+                tr.id = 'member-' + data.User_ID;
+                updateMemberRow(tr, data);
+                // TODO: process checkin/checkout on server side
+                //document.querySelector('#check-' + data.User_ID)?.addEventListener('change', function() {
+                //
+                //});
+                return tr;
+            }
+
+            function updateMemberRow(tr, data) {
+                tr.innerHTML = `
+                    <td><label for="check-${data.User_ID}" class="checkable">${data.Last_Name}, ${data.First_Name}</label></td>
+                    <td>${data.User_ID}</td>
+                    <td>
+                    <label>
+                        <input disabled type="checkbox" id="check-${data.User_ID}" ${data.Checked_In ? 'checked' : ''}>
+                        <span class="checkable" ></span>
+                    </label>
+                    </td>
+                    <td>
+                    ${new Date(data.Last_In).toLocaleString()}
+                    </td>
+                    <td>
+                    ${(data.Total_Seconds/3600.0).toFixed(2)}
+                    </td>
+
+                `;
+
+            if (data.Checked_In) {
+                    tr.classList.add('checked-in');
+                } else {
+                    tr.classList.remove('checked-in');
+                }
+            }
+
+            function boldMember(id, checkedIn) {
+                const tr = members[id];
+                if (tr) {
+                    tr.classList.add('bold');
+                    if (!checkedIn) {
+                        tr.classList.add('checked-out');
+                    }
+                    setTimeout(() => {
+                        tr.classList.remove('bold');
+                        if (!checkedIn) {
+                            tr.classList.remove('checked-out');
+                        }
+                    }, 500); // Highlight for 1/2 second
+                }
+            }
+            function updateStatus(connected) {
+                const statusEl = document.getElementById('ws-status');
+                if (connected) {
+                    statusEl.textContent = 'Connected';
+                    statusEl.classList.remove('error');
+                    statusEl.classList.add('success');
+                } else {
+                    statusEl.textContent = 'Disconnected';
+                    statusEl.classList.remove('success');
+                    statusEl.classList.add('error');
+                }
+            }
+            
+            function handleUpdate(data) {
+                 if (members[data.User_ID]) {
+                    // Update existing
+                    updateMemberRow(members[data.User_ID], data);
+                    boldMember(data.User_ID, data.Checked_In);
+                } else {
+                    // New member?
+                    const tr = createMemberRow(data);
+                    members[data.User_ID] = tr;
+                    tbody.appendChild(tr);
+                    if (data.Checked_In) {
+                        boldMember(data.User_ID, true);
+                    }
+                }
+            }
+
+            socket.onopen = function() {
+                console.log('Connected to WebSocket');
+                
+                // 1. Fetch initial list
+                socket.send(JSON.stringify({
+                    action: "list",
+                    request_id: REQ_LIST
+                }));
+
+                // 2. Subscribe to updates
+                socket.send(JSON.stringify({
+                    action: "subscribe_all",
+                    request_id: REQ_SUB
+                }));
+            };
+
+            socket.onmessage = function(e) {
+                try {
+                    const msg = JSON.parse(e.data);
+                    
+                    // Handle List Response
+                    if (msg.request_id === REQ_LIST) {
+                        tbody.innerHTML = '';
+                        const list = msg.data;
+                        if (Array.isArray(list)) {
+                            list.forEach(member => {
+                                const tr = createMemberRow(member);
+                                members[member.User_ID] = tr;
+                                tbody.appendChild(tr);
+                            });
+                        }
+                    }
+                    
+                    // Handle Updates
+                    if (msg.request_ids && msg.request_ids.includes(REQ_SUB)) {
+                        console.log('Update received:', msg.data);
+                        handleUpdate(msg.data);
+                    }
+                    updateStatus(true);
+                } catch (err) {
+                    console.error("Error parsing message:", err);
+                }
+            };
+            
+            socket.onclose = function() {
+                console.log("WebSocket closed");
+                updateStatus(false);
+            };
+            
+            socket.onerror = function(err) {
+                console.error("WebSocket error:", err);
+            };
+        });
+    </script>
+</body>
+</html>

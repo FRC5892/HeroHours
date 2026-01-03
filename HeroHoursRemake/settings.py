@@ -38,6 +38,7 @@ ALLOWED_HOSTS = ['.herokuapp.com', 'localhost', '127.0.0.1']
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -46,7 +47,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'HeroHours.apps.HeroHoursConfig',
     'debug_toolbar',
-    'sslserver',
     'rest_framework',
     'rest_framework.authtoken',
 ]
@@ -83,8 +83,15 @@ TEMPLATES = [
     },
 ]
 
+ASGI_APPLICATION = 'HeroHoursRemake.asgi.application'
+
 WSGI_APPLICATION = 'HeroHoursRemake.wsgi.application'
 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    }
+}
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
