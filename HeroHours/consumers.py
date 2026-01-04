@@ -5,7 +5,9 @@ from django.contrib.auth.decorators import permission_required
 from djangochannelsrestframework.decorators import action
 from djangochannelsrestframework.observer import model_observer
 from djangochannelsrestframework.observer.generics import ObserverModelInstanceMixin
+from djangochannelsrestframework.permissions import WrappedDRFPermission, IsAuthenticated
 from rest_framework import serializers
+from rest_framework.permissions import DjangoModelPermissions
 
 from . import models
 from djangochannelsrestframework import permissions
@@ -25,8 +27,7 @@ class MemberSerializer(serializers.ModelSerializer):
 class LiveConsumer(ObserverModelInstanceMixin, RetrieveModelMixin, ListModelMixin, GenericAsyncAPIConsumer):
     queryset = Users.objects.all().order_by('Last_Name','First_Name')
     serializer_class = MemberSerializer
-    permission_required = "HeroHours.change_users"
-
+    permission_classes = [IsAuthenticated]
 
     @model_observer(Users)
     async def update_activity(
