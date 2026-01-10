@@ -18,8 +18,17 @@ import platform
 import secrets
 
 
+def is_in_devcontainer():
+    """Check if running inside a devcontainer."""
+    return os.getenv("IN_DEVCONTAINER") == "1"
+
+
 def get_venv_python():
     """Get the path to the Python executable in the virtual environment."""
+    # If in devcontainer, use system python directly
+    if is_in_devcontainer():
+        return sys.executable
+    
     if platform.system() == "Windows":
         return os.path.join("venv", "Scripts", "python.exe")
     else:
@@ -28,6 +37,10 @@ def get_venv_python():
 
 def get_venv_pip():
     """Get the path to pip in the virtual environment."""
+    # If in devcontainer, use system pip directly
+    if is_in_devcontainer():
+        return "pip3"
+    
     if platform.system() == "Windows":
         return os.path.join("venv", "Scripts", "pip.exe")
     else:
@@ -36,6 +49,10 @@ def get_venv_pip():
 
 def venv_exists():
     """Check if virtual environment exists."""
+    # In devcontainer, we don't need venv
+    if is_in_devcontainer():
+        return True
+    
     return os.path.exists("venv") and os.path.exists(get_venv_python())
 
 
@@ -182,17 +199,21 @@ def setup_environment():
     if not create_env_file():
         return False
     
-    # Check if venv exists, create if not
-    if not venv_exists():
-        print("📦 Virtual environment not found.")
-        if not create_venv():
-            return False
+    # Skip venv creation in devcontainer
+    if is_in_devcontainer():
+        print("🐳 Running in devcontainer - using system Python")
     else:
-        print("✅ Virtual environment found.")
-    
-    # Install dependencies
-    if not install_requirements():
-        print("⚠️  Continuing despite installation issues...")
+        # Check if venv exists, create if not
+        if not venv_exists():
+            print("📦 Virtual environment not found.")
+            if not create_venv():
+                return False
+        else:
+            print("✅ Virtual environment found.")
+        
+        # Install dependencies (only outside devcontainer)
+        if not install_requirements():
+            print("⚠️  Continuing despite installation issues...")
     
     # Run migrations
     if not run_migrations():
