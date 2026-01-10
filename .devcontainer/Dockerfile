@@ -18,7 +18,7 @@ RUN apk add --no-cache \
     curl
 
 # Set working directory
-WORKDIR /workspace
+WORKDIR /workspaces/HeroHours
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -34,7 +34,7 @@ EXPOSE 8000
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV DJANGO_SETTINGS_MODULE=HeroHoursRemake.settings
+ENV DJANGO_SETTINGS_MODULE=config.settings
 
 # Default command
-CMD ["python3", "app.py"]
+CMD ["sleep", "infinity"]

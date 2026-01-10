@@ -158,10 +158,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Login settings - require authentication for all views
-LOGIN_URL = '/admin/login/'
-LOGIN_REDIRECT_URL = '/HeroHours/'
-LOGOUT_REDIRECT_URL = '/admin/login/'
+# Login settings
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/login/'
 
 CSRF_TRUSTED_ORIGINS = [
     'https://hero-hours-2bf608a75758.herokuapp.com',

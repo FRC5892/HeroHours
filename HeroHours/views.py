@@ -629,4 +629,3 @@ def live_view(request) -> HttpResponse:
         for real-time updates to function.
     """
     return render(request, 'live.html')
-    return render(request, 'live.html')
