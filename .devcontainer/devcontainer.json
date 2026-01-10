@@ -33,7 +33,7 @@
   "postCreateCommand": "python3 app.py setup",
   "postStartCommand": "echo '🚀 HeroHours is ready! Run: python3 app.py'",
 
-  "remoteUser": "root",
+  "remoteUser": "codespace",
   
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
