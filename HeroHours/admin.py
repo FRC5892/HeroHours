@@ -4,6 +4,7 @@ Django Admin Configuration for HeroHours Application
 This module configures the Django admin interface for managing Users and ActivityLog models.
 Includes custom actions for bulk check-in/check-out operations and user management.
 """
+
 import csv
 import json
 import logging

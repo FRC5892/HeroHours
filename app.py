@@ -10,6 +10,7 @@ Usage:
     python3 app.py migrate      # Run database migrations
     python3 app.py createsuperuser  # Create admin user
 """
+
 import os
 import sys
 import subprocess
