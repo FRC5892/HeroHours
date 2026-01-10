@@ -8,8 +8,8 @@ from rest_framework.settings import api_settings
 from rest_framework_csv import renderers as csv_renderers
 from django.db.models import Subquery
 from HeroHours.models import Users, ActivityLog
-from HeroHoursRemake import settings
-from HeroHours_api.authentication import URLTokenAuthentication
+from config import settings
+from api.authentication import URLTokenAuthentication
 
 
 # Create your views here.

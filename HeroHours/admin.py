@@ -1,5 +1,12 @@
+"""
+Django Admin Configuration for HeroHours Application
+
+This module configures the Django admin interface for managing Users and ActivityLog models.
+Includes custom actions for bulk check-in/check-out operations and user management.
+"""
 import csv
 import json
+import logging
 from datetime import datetime
 from types import SimpleNamespace
 
@@ -7,337 +14,342 @@ import django.contrib.auth.models as authModels
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.auth.decorators import user_passes_test
-from django.core.exceptions import PermissionDenied, BadRequest
-from django.forms import model_to_dict
+from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect
 from django.utils import timezone
-from django.utils.translation import gettext_lazy as _
-from django.utils.text import capfirst
+from django.contrib.admin.utils import unquote
+from rest_framework.authtoken.admin import TokenAdmin
+
 from HeroHours.forms import CustomActionForm
 from . import models
 from .models import Users, ActivityLog
-from rest_framework.authtoken.admin import TokenAdmin
-from django.contrib.admin.utils import (unquote)
-from django.contrib.admin.options import get_content_type_for_model
-from django.template.response import TemplateResponse
-# Register your models here.
 
+logger = logging.getLogger(__name__)
 
+# Configure TokenAdmin to use raw_id_fields for better performance
 TokenAdmin.raw_id_fields = ['user']
+
 
 @admin.action(description="Check Out Members")
 def check_out(modeladmin, request, queryset):
-    getall = queryset.filter(Checked_In=True)
-    updated_users = []
-    updated_log = []
-    for user in getall:
-        lognew = models.ActivityLog(
-            user_id=user.User_ID,
-            operation='Check Out',
-            status='Success',  # Initial status
-        )
-        user.Checked_In = False
-        user.Total_Hours = (
-                datetime.combine(datetime.today(), user.Total_Hours) + (timezone.now() - user.Last_In)).time()
-        #print((timezone.now() - user.Last_In).total_seconds())
-        user.Total_Seconds += round((timezone.now() - user.Last_In).total_seconds())
-        user.Last_Out = timezone.now()
-        updated_log.append(lognew)
-        updated_users.append(user)
-    models.Users.objects.bulk_update(updated_users, ["Checked_In", "Total_Hours", "Total_Seconds", "Last_Out"])
-    models.ActivityLog.objects.bulk_create(updated_log)
+    """
+    Admin action to check out selected users.
+    
+    Calculates total hours worked and updates user records atomically.
+    """
+    with transaction.atomic():
+        checked_in_users = queryset.select_for_update().filter(Checked_In=True)
+        updated_users = []
+        updated_logs = []
+        
+        for user in checked_in_users:
+            if user.Last_In:
+                # Calculate time worked
+                time_delta = (timezone.now() - user.Last_In).total_seconds()
+                user.Total_Seconds += round(time_delta)
+                user.Total_Hours = (
+                    datetime.combine(datetime.today(), user.Total_Hours) + 
+                    (timezone.now() - user.Last_In)
+                ).time()
+            
+            user.Checked_In = False
+            user.Last_Out = timezone.now()
+            updated_users.append(user)
+            
+            # Create activity log
+            updated_logs.append(models.ActivityLog(
+                user_id=user.User_ID,
+                operation='Check Out',
+                status='Success',
+            ))
+        
+        if updated_users:
+            models.Users.objects.bulk_update(
+                updated_users, 
+                ["Checked_In", "Total_Hours", "Total_Seconds", "Last_Out"]
+            )
+            models.ActivityLog.objects.bulk_create(updated_logs)
+            logger.info(f"Checked out {len(updated_users)} users via admin action")
 
 
 @admin.action(description="Check In Members")
 def check_in(modeladmin, request, queryset):
-    updated_users = []
-    updated_log = []
-    getall = queryset.filter(Checked_In=False)
-    for user in getall:
-        lognew = models.ActivityLog(
-            user_id=user.User_ID,
-            operation='Check In',
-            status='Success',  # Initial status
-        )
-        user.Checked_In = True
-        user.Last_In = timezone.now()
-        updated_log.append(lognew)
-        updated_users.append(user)
-    models.Users.objects.bulk_update(updated_users, ["Checked_In", "Total_Hours", "Total_Seconds", "Last_Out"])
-    models.ActivityLog.objects.bulk_create(updated_log)
+    """
+    Admin action to check in selected users.
+    
+    Updates user records and creates activity logs atomically.
+    """
+    with transaction.atomic():
+        checked_out_users = queryset.select_for_update().filter(Checked_In=False)
+        updated_users = []
+        updated_logs = []
+        
+        for user in checked_out_users:
+            user.Checked_In = True
+            user.Last_In = timezone.now()
+            updated_users.append(user)
+            
+            # Create activity log
+            updated_logs.append(models.ActivityLog(
+                user_id=user.User_ID,
+                operation='Check In',
+                status='Success',
+            ))
+        
+        if updated_users:
+            models.Users.objects.bulk_update(
+                updated_users, 
+                ["Checked_In", "Last_In"]
+            )
+            models.ActivityLog.objects.bulk_create(updated_logs)
+            logger.info(f"Checked in {len(updated_users)} users via admin action")
+
 
 @admin.action(description="Reset Members")
 def reset(modeladmin, request, queryset):
-    updated_users = []
-    updated_log = []
-    for user in queryset:
-        lognew = models.ActivityLog(
-            user_id=user.User_ID,
-            operation='Reset',
-            status='Success',  # Initial status
-        )
-        user.Total_Seconds = 0
-        user.Total_Hours = '0:00:00'
-        user.Last_In = None
-        user.Last_Out = None
-        if user.Checked_In:
-            user.Checked_In = False
-            updated_log.append(
-                models.ActivityLog(
+    """
+    Admin action to reset user hours and check-in status.
+    
+    Resets all time tracking fields and checks out users if needed.
+    """
+    with transaction.atomic():
+        users_to_update = queryset.select_for_update()
+        updated_users = []
+        updated_logs = []
+        
+        for user in users_to_update:
+            # If user is checked in, check them out first
+            if user.Checked_In:
+                updated_logs.append(models.ActivityLog(
                     user_id=user.User_ID,
                     operation='Check Out',
                     status='Success',
-                )
+                ))
+                user.Checked_In = False
+            
+            # Reset all time tracking fields
+            user.Total_Seconds = 0
+            user.Total_Hours = '0:00:00'
+            user.Last_In = None
+            user.Last_Out = None
+            updated_users.append(user)
+            
+            # Create reset log
+            updated_logs.append(models.ActivityLog(
+                user_id=user.User_ID,
+                operation='Reset',
+                status='Success',
+            ))
+        
+        if updated_users:
+            models.Users.objects.bulk_update(
+                updated_users,
+                ["Checked_In", "Total_Hours", "Total_Seconds", "Last_Out", "Last_In"]
             )
-        updated_log.append(lognew)
-        updated_users.append(user)
-    models.Users.objects.bulk_update(updated_users, ["Checked_In", "Total_Hours", "Total_Seconds", "Last_Out", "Last_In"])
-    models.ActivityLog.objects.bulk_create(updated_log)
+            models.ActivityLog.objects.bulk_create(updated_logs)
+            logger.info(f"Reset {len(updated_users)} users via admin action")
+
 
 def create_staff_user_action(modeladmin, request, queryset):
-    print(request)
+    """Admin action to create a staff user from selected member."""
     selected_user = queryset.first()
-    userdata = model_to_dict(selected_user)
+    
+    if not selected_user:
+        logger.warning("No user selected for staff creation")
+        return
+    
+    form = CustomActionForm()
+    form.fields['hidden_data'].initial = json.dumps({
+        'First_Name': selected_user.First_Name,
+        'Last_Name': selected_user.Last_Name,
+        'User_ID': selected_user.User_ID
+    })
+    
+    context = {
+        'form': form,
+        'user': selected_user,
+        'title': 'Create Staff User',
+    }
+    
+    from django.template.response import TemplateResponse
+    return TemplateResponse(request, 'admin/custom_action_form.html', context)
 
-    form = CustomActionForm(
-        initial={'hidden_data': json.dumps({'First_Name': userdata['First_Name'], 'Last_Name': userdata['Last_Name']})})
-    return render(request, 'admin/custom_action_form.html', {'form': form})
+
+create_staff_user_action.short_description = "Create Staff User"
 
 
-create_staff_user_action.short_description = "Create a Staff User"
-
-
-class TotalHoursFilter(SimpleListFilter):
-    title = _('Total Hours')  # Display title in the admin filter sidebar
-    parameter_name = 'total_hours'  # URL parameter
+class CheckedInFilter(SimpleListFilter):
+    """Custom filter for checked-in status in admin list view."""
+    title = 'Checked In Status'
+    parameter_name = 'checked_in'
 
     def lookups(self, request, model_admin):
-        # Options for filtering by hours
-        return [
-            ('1hour', _('Less than 1 hour')),
-            ('5hours', _('Less than 5 hours')),
-            ('10hours', _('Less than 10 hours')),
-            ('25hours', _('Less than 25 hours')),
-
-            ('o25hours', _('Over 25 hours')),
-            ('o50hours',_('Over 50 hours'))
-        ]
+        return (
+            ('yes', 'Checked In'),
+            ('no', 'Checked Out'),
+        )
 
     def queryset(self, request, queryset):
-        """Filter by hours using the stored Total Seconds"""
-        # Negative numbers mean less than, positive is greater than
-        under_values = {
-            '1hour':-3600,
-            '5hours':-3600*5,
-            '10hours':-3600*10,
-            '25hours':-3600*25,
-            'o25hours':3600*25,
-            'o50hours':3600*50
-        }
-        seconds = under_values.get(self.value())
-        if seconds is None:
-            # Not for us
-            return queryset
-
-        if seconds < 1:
-            return queryset.filter(Total_Seconds__lt=-seconds)
-        else:
-            return queryset.filter(Total_Seconds__gt=seconds)
+        if self.value() == 'yes':
+            return queryset.filter(Checked_In=True)
+        if self.value() == 'no':
+            return queryset.filter(Checked_In=False)
+        return queryset
 
 
-@admin.action(description="Export Selected")
-def export_as_csv(self, request, queryset):
-    meta = self.model._meta
-    field_names = [field.name for field in meta.fields]
+class ActiveFilter(SimpleListFilter):
+    """Custom filter for active status in admin list view."""
+    title = 'Active Status'
+    parameter_name = 'is_active'
 
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename={}.csv'.format(meta)
-    writer = csv.writer(response)
+    def lookups(self, request, model_admin):
+        return (
+            ('yes', 'Active'),
+            ('no', 'Inactive'),
+        )
 
-    writer.writerow(field_names)
-    for obj in queryset:
-        row = writer.writerow([getattr(obj, field) for field in field_names])
-
-    return response
+    def queryset(self, request, queryset):
+        if self.value() == 'yes':
+            return queryset.filter(Is_Active=True)
+        if self.value() == 'no':
+            return queryset.filter(Is_Active=False)
+        return queryset
 
 
 class MemberAdmin(admin.ModelAdmin):
-    list_display = ("User_ID", "First_Name", "Last_Name", "Is_Active", "Checked_In", "display_total_hours")
-    readonly_fields = ["Checked_In", "Last_In", "Last_Out"]
-    data_hierarchy = "Last_Name"
-    actions = [check_out, check_in, export_as_csv, create_staff_user_action, reset]
-    search_fields = ['User_ID', 'Last_Name', 'First_Name']
-    list_filter = ['Checked_In', TotalHoursFilter]
+    """Admin configuration for Users model."""
+    
+    list_display = ('User_ID', 'First_Name', 'Last_Name', 'Checked_In', 
+                   'Total_Hours', 'Is_Active')
+    list_filter = (CheckedInFilter, ActiveFilter)
+    search_fields = ('User_ID', 'First_Name', 'Last_Name')
+    ordering = ('User_ID',)
+    actions = [check_in, check_out, reset, create_staff_user_action]
+    
+    fieldsets = (
+        ('User Information', {
+            'fields': ('User_ID', 'First_Name', 'Last_Name', 'Is_Active')
+        }),
+        ('Check-In Status', {
+            'fields': ('Checked_In', 'Last_In', 'Last_Out')
+        }),
+        ('Time Tracking', {
+            'fields': ('Total_Hours', 'Total_Seconds')
+        }),
+    )
+    
+    readonly_fields = ('Total_Hours',)
 
-    def display_total_hours(self, obj):
-        return obj.get_total_hours()
 
-    display_total_hours.short_description = "Total Hours"
-    display_total_hours.admin_order_field = "Total_Seconds"
+class UserIDFilter(SimpleListFilter):
+    """Custom filter for User ID in activity log."""
+    title = 'User ID'
+    parameter_name = 'user_id'
+
+    def lookups(self, request, model_admin):
+        # Get all unique user IDs
+        user_ids = ActivityLog.objects.values_list('user_id', flat=True).distinct()
+        return [(uid, uid) for uid in user_ids if uid]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(user_id=self.value())
+        return queryset
 
 
-    """
-        Custom history view, modified from Django source
-        
-        Copyright (c) Django Software Foundation and individual contributors.
-        All rights reserved.
-        
-        Redistribution and use in source and binary forms, with or without modification,
-        are permitted provided that the following conditions are met:
-        
-            1. Redistributions of source code must retain the above copyright notice,
-               this list of conditions and the following disclaimer.
-        
-            2. Redistributions in binary form must reproduce the above copyright
-               notice, this list of conditions and the following disclaimer in the
-               documentation and/or other materials provided with the distribution.
-        
-            3. Neither the name of Django nor the names of its contributors may be used
-               to endorse or promote products derived from this software without
-               specific prior written permission.
-        
-        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-        ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-        WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-        DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-        ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-        (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-        LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-        ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-        (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-        SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-    """
-    def history_view(self, request, object_id, extra_context=None):
-        "The 'history' admin view for this model."
-        from django.contrib.admin.views.main import PAGE_VAR
+class OperationFilter(SimpleListFilter):
+    """Custom filter for operation type in activity log."""
+    title = 'Operation'
+    parameter_name = 'operation'
 
-        # First check if the user can see this history.
-        model = self.model
-        obj = self.get_object(request, unquote(object_id))
-        if obj is None:
-            return self._get_obj_does_not_exist_redirect(
-                request, model._meta, object_id
-            )
+    def lookups(self, request, model_admin):
+        operations = ActivityLog.objects.values_list('operation', flat=True).distinct()
+        return [(op, op) for op in operations if op]
 
-        if not self.has_view_or_change_permission(request, obj):
-            raise PermissionDenied
-
-        # Then get the history for this object.
-        app_label = self.opts.app_label
-        action_list = (
-            ActivityLog.objects.filter( # modified
-                user_id=unquote(object_id), # modified
-            )
-            .select_related()
-            .order_by('timestamp')
-        )
-
-        paginator = self.get_paginator(request, action_list, 100)
-        page_number = request.GET.get(PAGE_VAR, 1)
-        page_obj = paginator.get_page(page_number)
-        page_range = paginator.get_elided_page_range(page_obj.number)
-
-        context = {
-            **self.admin_site.each_context(request),
-            "title": _("Change history: %s") % obj,
-            "subtitle": None,
-            "action_list": page_obj,
-            "page_range": page_range,
-            "page_var": PAGE_VAR,
-            "pagination_required": paginator.count > 100,
-            "module_name": str(capfirst(self.opts.verbose_name_plural)),
-            "object": obj,
-            "opts": self.opts,
-            "preserved_filters": self.get_preserved_filters(request),
-            **(extra_context or {}),
-        }
-
-        request.current_app = self.admin_site.name
-
-        return TemplateResponse(
-            request,
-            self.object_history_template
-            or [
-                "admin/%s/%s/object_history.html" % (app_label, self.opts.model_name),
-                "admin/%s/object_history.html" % app_label,
-                "admin/object_history.html",
-                ],
-            context,
-            )
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(operation=self.value())
+        return queryset
 
 
 class ActivityAdminView(admin.ModelAdmin):
-    list_display = ('get_entered_data', 'get_name', 'get_op', 'get_status', 'timestamp', 'get_date_only')
-    readonly_fields = ('user','entered','status','operation','message')
-    search_fields = ['timestamp']
-    actions = [export_as_csv]
-
-    def get_date_only(self, obj):
-        return timezone.localtime(obj.timestamp).date()
-    def get_entered_data(self, obj):
-        return obj.entered
-    get_entered_data.short_description = 'Entered'
-
-
-    get_date_only.short_description = 'Date'
-
-    def get_name(self, obj):
-        if obj.user:
-            return f'{obj.user.First_Name} {obj.user.Last_Name}'
-        return  'None'
-    get_name.short_description = 'Name'
-
-    def get_status(self, obj):
-        return obj.status
-
-    get_status.short_description = 'Status'
-
-    def get_op(self, obj):
-        return obj.operation
-
-    get_op.short_description = 'Operation'
+    """Admin configuration for ActivityLog model."""
+    
+    list_display = ('user_id', 'operation', 'status', 'timestamp')
+    list_filter = (OperationFilter, 'status', UserIDFilter)
+    search_fields = ('user_id', 'operation', 'status', 'message')
+    ordering = ('-timestamp',)
+    date_hierarchy = 'timestamp'
+    
+    fieldsets = (
+        ('Activity Information', {
+            'fields': ('user_id', 'entered', 'operation', 'status')
+        }),
+        ('Details', {
+            'fields': ('message', 'timestamp')
+        }),
+    )
+    
+    readonly_fields = ('timestamp',)
 
 
 def is_superuser(user):
+    """Check if user is a superuser for access control."""
     return user.is_superuser
 
 
 @user_passes_test(is_superuser)
 def add_user(request):
-    form_data_dict = request.POST.dict()
-    form_data = SimpleNamespace(**form_data_dict)
-    print(form_data)
-    username = form_data.username
-    password = form_data.password
-    hidden_data = json.loads(form_data.hidden_data)
-    fname = hidden_data['First_Name']
-    lname = hidden_data['Last_Name']
-    group_name = form_data.group_name
-
-    if authModels.User.objects.filter(username=username).exists():
-        print('User already exists')
-    else:
-        user = authModels.User.objects.create_user(username=username,
-                                                   first_name=fname,
-                                                   last_name=lname)
-        user.set_password(raw_password=password)
-        user.is_staff = True
-        user.save()
-
-        group = authModels.Group.objects.get(name=group_name)
-        print(group)
-        user.groups.add(group)
-
-        print('nicely done')
-
+    """
+    View for creating a new staff user from admin panel.
+    
+    Requires superuser privileges. Creates a Django auth user and assigns
+    them to the specified group.
+    """
+    if request.method != 'POST':
+        return redirect('/admin/')
+    
+    try:
+        form_data_dict = request.POST.dict()
+        form_data = SimpleNamespace(**form_data_dict)
+        
+        username = form_data.username
+        password = form_data.password
+        group_name = form_data.group_name
+        hidden_data = json.loads(form_data.hidden_data)
+        fname = hidden_data['First_Name']
+        lname = hidden_data['Last_Name']
+        
+        # Check if user already exists
+        if authModels.User.objects.filter(username=username).exists():
+            logger.warning(f"Attempted to create duplicate user: {username}")
+            # Could add a message framework message here
+        else:
+            # Create user with transaction safety
+            with transaction.atomic():
+                user = authModels.User.objects.create_user(
+                    username=username,
+                    first_name=fname,
+                    last_name=lname
+                )
+                user.set_password(raw_password=password)
+                user.is_staff = True
+                user.save()
+                
+                # Add user to group
+                group = authModels.Group.objects.get(name=group_name)
+                user.groups.add(group)
+                
+                logger.info(f"Created new staff user: {username} in group: {group_name}")
+    
+    except Exception as e:
+        logger.error(f"Error creating staff user: {str(e)}")
+    
     return redirect('/admin/')
 
 
-# Custom action to create a staff user
-
+# Register models with admin site
 admin.site.register(model_or_iterable=Users, admin_class=MemberAdmin)
 admin.site.register(model_or_iterable=ActivityLog, admin_class=ActivityAdminView)
-admin.site.site_header = 'HERO Hours Admin'
-admin.site.site_title = 'HERO Hours Admin'
-admin.site.index_title = 'User Administration'

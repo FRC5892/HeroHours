@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 
-from HeroHours_api import views
+from api import views
 from .views import (
     SheetPullAPI,
     MeetingPullAPI

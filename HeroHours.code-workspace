@@ -1,0 +1,117 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": true,
+    "python.formatting.provider": "black",
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": false,
+    "python.testing.djangoTestArgs": ["manage.py", "test", "--verbosity=2"],
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.pyc": true,
+      "**/venv": true,
+      "**/.pytest_cache": true
+    },
+    "terminal.integrated.env.linux": {
+      "DJANGO_SETTINGS_MODULE": "HeroHoursRemake.settings"
+    },
+    "terminal.integrated.env.osx": {
+      "DJANGO_SETTINGS_MODULE": "HeroHoursRemake.settings"
+    },
+    "terminal.integrated.env.windows": {
+      "DJANGO_SETTINGS_MODULE": "HeroHoursRemake.settings"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "batisteo.vscode-django",
+      "wholroyd.jinja"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Django: Run Server",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/manage.py",
+        "args": ["runserver"],
+        "django": true,
+        "justMyCode": true
+      },
+      {
+        "name": "Django: Run Tests",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/manage.py",
+        "args": ["test"],
+        "django": true,
+        "justMyCode": false
+      },
+      {
+        "name": "Quick Start (app.py)",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/app.py",
+        "console": "integratedTerminal",
+        "justMyCode": true
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Setup HeroHours",
+        "type": "shell",
+        "command": "python3 app.py setup",
+        "problemMatcher": [],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        }
+      },
+      {
+        "label": "Run HeroHours Server",
+        "type": "shell",
+        "command": "python3 app.py",
+        "problemMatcher": [],
+        "isBackground": true
+      },
+      {
+        "label": "Run Tests",
+        "type": "shell",
+        "command": "python3 app.py test",
+        "problemMatcher": [],
+        "group": {
+          "kind": "test",
+          "isDefault": true
+        }
+      },
+      {
+        "label": "Create Superuser",
+        "type": "shell",
+        "command": "python3 app.py createsuperuser",
+        "problemMatcher": []
+      },
+      {
+        "label": "Run Migrations",
+        "type": "shell",
+        "command": "python3 app.py migrate",
+        "problemMatcher": []
+      }
+    ]
+  }
+}
