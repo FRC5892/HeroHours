@@ -1,12 +1,21 @@
 # HeroHours Development Container Configuration
-FROM python:3.11-slim
+FROM mcr.microsoft.com/devcontainers/base:alpine-3.22
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install Python and required packages for venv
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    python3-dev \
+    build-base
+
+# Create symbolic link for python if needed
+RUN ln -sf /usr/bin/python3 /usr/local/bin/python
+
+# Install system dependencies (Alpine equivalents)
+RUN apk add --no-cache \
     postgresql-client \
     git \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    curl
 
 # Set working directory
 WORKDIR /workspace
