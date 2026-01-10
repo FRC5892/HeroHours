@@ -30,10 +30,10 @@
     }
   },
 
-  "postCreateCommand": "python3 app.py setup",
-  "postStartCommand": "echo '🚀 HeroHours is ready! Run: python3 app.py'",
+  "postCreateCommand": "pip3 install --no-cache-dir -r requirements.txt && python3 manage.py migrate --noinput",
+  "postStartCommand": "echo '🚀 HeroHours is ready! Run: python3 manage.py runserver'",
 
-  "remoteUser": "codespace",
+  "remoteUser": "vscode",
   
   "features": {
     "ghcr.io/devcontainers/features/git:1": {}
