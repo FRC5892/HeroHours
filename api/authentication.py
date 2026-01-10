@@ -88,14 +88,20 @@ class URLTokenAuthentication(BaseAuthentication):
 
 
 def get_authorization_key(request):
-    # TODO: make this look correct (change comments and names)
     """
-    Return request's 'key' parameter, as a bytestring.
-
-    Hide some test client ickyness where the parameter can be unicode.
+    Extract the authentication key from request GET parameters.
+    
+    Returns the 'key' parameter as a bytestring, handling both string
+    and bytes input types for compatibility.
+    
+    Args:
+        request: Django HTTP request object
+        
+    Returns:
+        bytes: The authentication key as a bytestring
     """
     auth = request.GET.get('key', b'')
     if isinstance(auth, str):
-        # Work around django test client oddness
+        # Convert string to bytes for consistent handling
         auth = auth.encode(HTTP_HEADER_ENCODING)
     return auth

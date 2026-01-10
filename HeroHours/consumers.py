@@ -21,11 +21,20 @@ from .models import Users
 
 
 class MemberSerializer(serializers.ModelSerializer):
+    """Serializer for WebSocket updates - only includes necessary fields"""
     class Meta:
         model = Users
+        # Microoptimization: Only serialize fields that are actually used in frontend
         fields = ['User_ID', 'First_Name', 'Last_Name', 'Checked_In', 'Total_Seconds', 'Last_In', 'Last_Out']
+        # Microoptimization: Mark read-only fields to skip validation overhead
+        read_only_fields = fields
+
 class LiveConsumer(ObserverModelInstanceMixin, RetrieveModelMixin, ListModelMixin, GenericAsyncAPIConsumer):
-    queryset = Users.objects.all().order_by('Last_Name','First_Name')
+    # Microoptimization: Use only() to fetch only needed fields
+    queryset = Users.objects.only(
+        'User_ID', 'First_Name', 'Last_Name', 'Checked_In', 
+        'Total_Seconds', 'Last_In', 'Last_Out'
+    ).order_by('Last_Name', 'First_Name')
     serializer_class = MemberSerializer
     permission_classes = [IsAuthenticated]
 
@@ -41,11 +50,21 @@ class LiveConsumer(ObserverModelInstanceMixin, RetrieveModelMixin, ListModelMixi
 
     @update_activity.serializer
     def update_activity(self, instance: Users, action, **kwargs) -> MemberSerializer:
-        """This will return the comment serializer"""
+        """
+        Serialize user updates for WebSocket broadcasting.
+        
+        Microoptimization: Only refresh from DB if F() expressions detected
+        """
+        # Microoptimization: Check for BaseExpression to avoid unnecessary DB refresh
+        needs_refresh = False
         for field in instance._meta.fields:
-            if isinstance(getattr(instance, field.name), BaseExpression):
-                instance.refresh_from_db()
+            if isinstance(getattr(instance, field.name, None), BaseExpression):
+                needs_refresh = True
                 break
+        
+        if needs_refresh:
+            instance.refresh_from_db()
+            
         return MemberSerializer(instance)
 
     @action()

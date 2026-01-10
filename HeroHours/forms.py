@@ -3,7 +3,7 @@ import django.contrib.auth.models as authModels
 
 
 class CustomActionForm(forms.Form):
-    print("running form")
+    """Form for creating custom staff user actions in admin panel"""
     username = forms.CharField(label='Username', max_length=100)
     password = forms.CharField(label='Password', widget=forms.PasswordInput)
     group_name = forms.ChoiceField(label='Group Name', required=True)

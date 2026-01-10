@@ -1,5 +1,5 @@
 """
-URL configuration for HeroHoursRemake project.
+URL configuration for HeroHours project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/5.1/topics/http/urls/
@@ -28,7 +28,7 @@ def root_redirect(request):
     return redirect('/HeroHours/')
 urlpatterns = [
     path('HeroHours/', include('HeroHours.urls')),
-    path('api/', include('HeroHours_api.urls')),
+    path('api/', include('api.urls')),
     path('favicon.ico', favicon),
     path('admin/', admin.site.urls),
     path('test/', home),
