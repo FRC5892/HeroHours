@@ -26,7 +26,7 @@ load_dotenv(find_dotenv())
 @permission_required("HeroHours.change_users")
 def index(request):
     # Query all users from the database
-    usersData = models.Users.objects.filter(Is_Active=True)
+    usersData = models.Users.objects.filter(Is_Active=True).order_by('Last_Name','First_Name')
     users_checked_in = models.Users.objects.filter(Checked_In=True).count()
     local_log_entries = models.ActivityLog.objects.all()[:9]  #limits to loading only 9 entries
     #print(local_log_entries)
