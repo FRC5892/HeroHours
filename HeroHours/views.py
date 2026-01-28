@@ -1,6 +1,8 @@
 import base64
 import json
 import time
+from datetime import timedelta
+
 import requests
 import os
 
@@ -112,7 +114,6 @@ def handle_special_commands(user_id):
 def handle_bulk_updates(user_id, time = None):
     if time == None:
         time = timezone.now()
-    start_time = time.time()
     updated_users = []
     updated_log = []
 
@@ -124,7 +125,7 @@ def handle_bulk_updates(user_id, time = None):
         getall = models.Users.objects.filter(Checked_In=True)
 
     for user in getall:
-        log = models.ActivityLog(user_id=user.User_ID,entered=user.User_ID, operation='Check In' if user_id == '-404' else 'Check Out',
+        log = models.ActivityLog(user_id=user.User_ID,entered=user.User_ID, operation='Check In' if user_id == '-404' else 'Auto Check Out',
                                  status='Success')
 
         if user_id == '-404':
@@ -134,18 +135,22 @@ def handle_bulk_updates(user_id, time = None):
             if not user.Last_In:
                 user.Last_In = time
             user.Checked_In = False
-            user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (time - user.Last_In),
-                                                 output_field=DurationField())
-            user.Total_Seconds = F('Total_Seconds') + round((time - user.Last_In).total_seconds())
-            user.Last_Out = time
+            threshold = int(os.environ.get('AUTO_LOGOUT_THRESHOLD_SECONDS',3600))
+            if (time - user.Last_In) > timedelta(seconds=threshold):
+                user.Total_Hours = ExpressionWrapper(F('Total_Hours') + ((time-timedelta(seconds=threshold)) - user.Last_In),
+                                                      output_field=DurationField())
+                user.Total_Seconds = F('Total_Seconds') + round(((time-timedelta(seconds=threshold)) - user.Last_In).total_seconds())
+            else:
+                user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (time - user.Last_In),
+                                                  output_field=DurationField())
+                user.Total_Seconds = F('Total_Seconds') + round((time - user.Last_In).total_seconds())
+        user.Last_Out = time
 
         updated_log.append(log)
         updated_users.append(user)
 
     models.Users.objects.bulk_update(updated_users, ["Checked_In", "Total_Hours", "Total_Seconds", "Last_Out"])
     models.ActivityLog.objects.bulk_create(updated_log)
-    elapsed_time = time.time() - start_time
-    print(f"input(bulk) execution time: {elapsed_time:.4f} seconds")
     # Redirect to index after bulk updates
     return redirect('index')
 

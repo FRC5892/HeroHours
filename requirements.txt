@@ -30,7 +30,6 @@ MarkupSafe==2.1.5
 packaging==24.1
 prompt_toolkit==3.0.48
 psycopg==3.2.3
-psycopg-c==3.2.3
 python-dateutil==2.9.0.post0
 python-decouple==3.8
 python-dotenv==1.0.1

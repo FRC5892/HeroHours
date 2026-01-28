@@ -35,6 +35,7 @@ class ActivityLog(models.Model):
         ('checkIn', 'Check In'),
         ('checkOut', 'Check Out'),
         ('none', "None"),
+        ('autoCheckOut','Auto Check Out'),
     ]
 
     STATUS_CHOICES = [
@@ -46,7 +47,7 @@ class ActivityLog(models.Model):
 
     user = models.ForeignKey(Users, models.CASCADE, blank=True, null=True)
     entered = models.TextField()
-    operation = models.CharField(max_length=10, choices=OPERATION_CHOICES)
+    operation = models.CharField(max_length=14, choices=OPERATION_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
     message = models.TextField(default='')  # Optional message field
     timestamp = models.DateTimeField(auto_now_add=True)  # Automatically set the timestamp when creating
