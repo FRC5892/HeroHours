@@ -1,6 +1,8 @@
 import base64
 import json
 import time
+from datetime import timedelta
+
 import requests
 import os
 
@@ -26,7 +28,7 @@ load_dotenv(find_dotenv())
 @permission_required("HeroHours.change_users")
 def index(request):
     # Query all users from the database
-    usersData = models.Users.objects.filter(Is_Active=True)
+    usersData = models.Users.objects.filter(Is_Active=True).order_by('Last_Name','First_Name')
     users_checked_in = models.Users.objects.filter(Checked_In=True).count()
     local_log_entries = models.ActivityLog.objects.all()[:9]  #limits to loading only 9 entries
     #print(local_log_entries)
@@ -123,7 +125,7 @@ def handle_bulk_updates(user_id, time = None):
         getall = models.Users.objects.filter(Checked_In=True)
 
     for user in getall:
-        log = models.ActivityLog(user_id=user.User_ID,entered=user.User_ID, operation='Check In' if user_id == '-404' else 'Check Out',
+        log = models.ActivityLog(user_id=user.User_ID,entered=user.User_ID, operation='Check In' if user_id == '-404' else 'Auto Check Out',
                                  status='Success')
 
         if user_id == '-404':
@@ -133,10 +135,16 @@ def handle_bulk_updates(user_id, time = None):
             if not user.Last_In:
                 user.Last_In = time
             user.Checked_In = False
-            user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (time - user.Last_In),
-                                                 output_field=DurationField())
-            user.Total_Seconds = F('Total_Seconds') + round((time - user.Last_In).total_seconds())
-            user.Last_Out = time
+            threshold = int(os.environ.get('AUTO_LOGOUT_THRESHOLD_SECONDS',3600))
+            if (time - user.Last_In) > timedelta(seconds=threshold):
+                user.Total_Hours = ExpressionWrapper(F('Total_Hours') + ((time-timedelta(seconds=threshold)) - user.Last_In),
+                                                      output_field=DurationField())
+                user.Total_Seconds = F('Total_Seconds') + round(((time-timedelta(seconds=threshold)) - user.Last_In).total_seconds())
+            else:
+                user.Total_Hours = ExpressionWrapper(F('Total_Hours') + (time - user.Last_In),
+                                                  output_field=DurationField())
+                user.Total_Seconds = F('Total_Seconds') + round((time - user.Last_In).total_seconds())
+        user.Last_Out = time
 
         updated_log.append(log)
         updated_users.append(user)

@@ -164,6 +164,7 @@ async function addRow(item) {
           operationClass = "success";
           break;
         case "Check Out":
+        case "Auto Check Out":
           operationClass = "check-out";
           break;
         default:
