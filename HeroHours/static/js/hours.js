@@ -105,7 +105,7 @@ async function handleFormSubmission(event) {
       "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
       'X-Requested-With': 'XMLHttpRequest'
     },
-    body: serialized_data.toString(),
+    body: serialized_data.toString().replaceAll("ID+",""),
     method: "POST",
   }).then(async function (response) {
     console.log(response)

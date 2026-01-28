@@ -28,7 +28,7 @@ load_dotenv(find_dotenv())
 @permission_required("HeroHours.change_users")
 def index(request):
     # Query all users from the database
-    usersData = models.Users.objects.filter(Is_Active=True)
+    usersData = models.Users.objects.filter(Is_Active=True).order_by('Last_Name','First_Name')
     users_checked_in = models.Users.objects.filter(Checked_In=True).count()
     local_log_entries = models.ActivityLog.objects.all()[:9]  #limits to loading only 9 entries
     #print(local_log_entries)
@@ -238,5 +238,15 @@ def sheet_pull(request):
     members = models.Users.objects.all()
     response = 'User_ID,First_Name,Last_Name,Total_Hours,Total_Seconds,Last_In,Last_Out,Is_Active,\n'
     for member in members:
-        response += f"{member.User_ID},{member.First_Name},{member.Last_Name},{member.get_total_hours()},{member.Total_Seconds},{member.Last_In},{member.Last_Out},{member.Is_Active}\n"
+        response += f"{member.User_ID},{member.First_Name},{member.Last_Name},{member.get_p()},{member.Total_Seconds},{member.Last_In},{member.Last_Out},{member.Is_Active}\n"
     return HttpResponse(response,content_type='text/csv')
+
+
+def logout_view(request):
+    logout(request)
+    return redirect('login')
+
+
+@permission_required("HeroHours.change_users")
+def live_view(request):
+    return render(request, 'live.html')
