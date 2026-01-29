@@ -164,7 +164,7 @@ def export_as_csv(self, request, queryset):
 
 class MemberAdmin(admin.ModelAdmin):
     list_display = ("User_ID", "First_Name", "Last_Name", "Is_Active", "Checked_In", "display_total_hours")
-    readonly_fields = ["Checked_In", "Last_In", "Last_Out"]
+    readonly_fields = ("display_total_hours",)
     data_hierarchy = "Last_Name"
     actions = [check_out, check_in, export_as_csv, create_staff_user_action, reset]
     search_fields = ['User_ID', 'Last_Name', 'First_Name']
@@ -269,7 +269,6 @@ class MemberAdmin(admin.ModelAdmin):
 
 class ActivityAdminView(admin.ModelAdmin):
     list_display = ('get_entered_data', 'get_name', 'get_op', 'get_status', 'timestamp', 'get_date_only')
-    readonly_fields = ('user','entered','status','operation','message')
     search_fields = ['timestamp']
     actions = [export_as_csv]
 

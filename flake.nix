@@ -32,7 +32,7 @@
             # This executes some shell code to initialize 
             # a venv in $venvDir before dropping into the shell
             pythonPackages.venvShellHook
-            pythonPackages.psycopg-c
+            pythonPackages.psycopg2
 
             # Those are dependencies that we would like 
             # to use from nixpkgs, which will add 
